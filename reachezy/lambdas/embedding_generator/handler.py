@@ -81,8 +81,7 @@ def handler(event, context):
         INSERT INTO video_embeddings (video_id, creator_id, embedding, is_creator_aggregate)
         VALUES (%s, %s, %s::vector, FALSE)
         ON CONFLICT (video_id, is_creator_aggregate) DO UPDATE SET
-            embedding = EXCLUDED.embedding,
-            updated_at = NOW()
+            embedding = EXCLUDED.embedding
         """,
         (video_id, creator_id, embedding_str),
     )

@@ -103,8 +103,8 @@ def handler(event, context):
     cur.execute(
         """
         UPDATE video_uploads
-        SET status = 'processing', duration_seconds = %s, updated_at = NOW()
-        WHERE video_id = %s
+        SET status = 'processing', duration_seconds = %s
+        WHERE id = %s
         """,
         (round(duration_seconds, 2), video_id),
     )

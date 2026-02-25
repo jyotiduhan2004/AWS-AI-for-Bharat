@@ -59,13 +59,8 @@ class PipelineStack(cdk.Stack):
             "FRAMES_BUCKET": frames_bucket.bucket_name,
         }
 
-        # Shared VPC placement config
-        vpc_props = {
-            "vpc": vpc,
-            "vpc_subnets": ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-            "security_groups": [lambda_security_group],
-            "allow_public_subnet": True,
-        }
+        # NOTE: Lambdas run outside VPC for hackathon.
+        # RDS is publicly accessible, so Lambdas reach it via public endpoint.
 
         # =====================================================================
         # Pipeline Lambda Functions
@@ -96,7 +91,6 @@ class PipelineStack(cdk.Stack):
             #         "arn:aws:lambda:us-east-1:ACCOUNT:layer:ffmpeg:VERSION"
             #     )
             # ],
-            **vpc_props,
         )
         db_secret.grant_read(frame_extractor_fn)
         videos_bucket.grant_read(frame_extractor_fn)
@@ -117,7 +111,6 @@ class PipelineStack(cdk.Stack):
                 **base_env,
                 "BEDROCK_REGION": "us-east-1",
             },
-            **vpc_props,
         )
         db_secret.grant_read(video_analyzer_fn)
         frames_bucket.grant_read(video_analyzer_fn)
@@ -145,7 +138,6 @@ class PipelineStack(cdk.Stack):
                 **base_env,
                 "BEDROCK_REGION": "us-east-1",
             },
-            **vpc_props,
         )
         db_secret.grant_read(embedding_generator_fn)
         # Grant Bedrock InvokeModel permission
@@ -169,7 +161,6 @@ class PipelineStack(cdk.Stack):
             memory_size=256,
             timeout=cdk.Duration.seconds(60),
             environment={**base_env},
-            **vpc_props,
         )
         db_secret.grant_read(profile_aggregator_fn)
 

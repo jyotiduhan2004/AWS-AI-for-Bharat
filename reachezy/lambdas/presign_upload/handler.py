@@ -62,10 +62,10 @@ def handler(event, context):
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO video_uploads (video_id, creator_id, s3_bucket, s3_key, filename, content_type, status)
-            VALUES (%s, %s, %s, %s, %s, %s, 'uploaded')
+            INSERT INTO video_uploads (id, creator_id, s3_key, status)
+            VALUES (%s, %s, %s, 'uploaded')
             """,
-            (video_id, creator_id, upload_bucket, s3_key, filename, content_type),
+            (video_id, creator_id, s3_key),
         )
         conn.commit()
 

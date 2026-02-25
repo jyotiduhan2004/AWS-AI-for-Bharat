@@ -32,6 +32,7 @@ layers/ffmpeg/*.zip
 layers/weasyprint/*.zip
 layers/ffmpeg/bin/
 layers/weasyprint/python/
+layers/shared-deps/python/
 
 # CDK
 cdk.context.json

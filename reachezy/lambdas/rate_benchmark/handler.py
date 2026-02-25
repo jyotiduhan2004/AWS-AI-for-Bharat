@@ -9,7 +9,7 @@ def _get_creator_info(cur, creator_id):
         """
         SELECT niche, followers_count
         FROM creators
-        WHERE creator_id = %s
+        WHERE id = %s
         """,
         (creator_id,),
     )
@@ -68,7 +68,7 @@ def _get_community_rates(cur, niche, follower_bucket, content_type):
         f"""
         SELECT rc.{rate_column}
         FROM rate_cards rc
-        JOIN creators c ON rc.creator_id = c.creator_id
+        JOIN creators c ON rc.creator_id = c.id
         WHERE c.niche = %s
           AND rc.{rate_column} IS NOT NULL
           AND rc.{rate_column} > 0
@@ -86,7 +86,7 @@ def _get_community_rates(cur, niche, follower_bucket, content_type):
         f"""
         SELECT rc.{rate_column}, c.followers_count
         FROM rate_cards rc
-        JOIN creators c ON rc.creator_id = c.creator_id
+        JOIN creators c ON rc.creator_id = c.id
         WHERE c.niche = %s
           AND rc.{rate_column} IS NOT NULL
           AND rc.{rate_column} > 0
@@ -125,7 +125,7 @@ def _get_overall_rates(cur, follower_bucket, content_type):
         f"""
         SELECT rc.{rate_column}, c.followers_count
         FROM rate_cards rc
-        JOIN creators c ON rc.creator_id = c.creator_id
+        JOIN creators c ON rc.creator_id = c.id
         WHERE rc.{rate_column} IS NOT NULL
           AND rc.{rate_column} > 0
         ORDER BY rc.{rate_column}
@@ -156,7 +156,7 @@ def _get_seed_benchmark(cur, niche, follower_bucket, content_type):
     """Fetch seed benchmark data from rate_benchmarks table."""
     cur.execute(
         """
-        SELECT p25, p50, p75, min_rate, max_rate
+        SELECT rate_low, rate_high
         FROM rate_benchmarks
         WHERE niche = %s AND follower_bucket = %s AND content_type = %s
         """,
@@ -165,12 +165,16 @@ def _get_seed_benchmark(cur, niche, follower_bucket, content_type):
     row = cur.fetchone()
     if not row:
         return None
+    rate_low = float(row[0]) if row[0] is not None else 0
+    rate_high = float(row[1]) if row[1] is not None else 0
+    # Derive p25/p50/p75 from rate_low and rate_high for interpolation
+    midpoint = (rate_low + rate_high) / 2
     return {
-        "p25": float(row[0]) if row[0] is not None else 0,
-        "p50": float(row[1]) if row[1] is not None else 0,
-        "p75": float(row[2]) if row[2] is not None else 0,
-        "min_rate": float(row[3]) if row[3] is not None else 0,
-        "max_rate": float(row[4]) if row[4] is not None else 0,
+        "rate_low": rate_low,
+        "rate_high": rate_high,
+        "p25": rate_low + (rate_high - rate_low) * 0.25,
+        "p50": midpoint,
+        "p75": rate_low + (rate_high - rate_low) * 0.75,
     }
 
 
@@ -191,11 +195,11 @@ def _estimate_percentile_from_seed(rate, seed):
 
     # Define interpolation points
     points = [
-        (seed["min_rate"], 0),
+        (seed["rate_low"], 0),
         (seed["p25"], 25),
         (seed["p50"], 50),
         (seed["p75"], 75),
-        (seed["max_rate"], 100),
+        (seed["rate_high"], 100),
     ]
 
     # Filter out zero/invalid points
@@ -255,8 +259,8 @@ def _compute_benchmark(cur, niche, follower_bucket, content_type, rate):
             "percentile": percentile,
             "source": "seed",
             "sample_size": count,
-            "range_low": seed["min_rate"] if seed else None,
-            "range_high": seed["max_rate"] if seed else None,
+            "range_low": seed["rate_low"] if seed else None,
+            "range_high": seed["rate_high"] if seed else None,
         }
 
 

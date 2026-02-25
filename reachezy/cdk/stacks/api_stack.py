@@ -20,8 +20,8 @@ class ApiStack(cdk.Stack):
         self,
         scope: Construct,
         construct_id: str,
-        vpc: ec2.Vpc,
-        lambda_security_group: ec2.SecurityGroup,
+        vpc: ec2.Vpc,  # kept for interface compatibility
+        lambda_security_group: ec2.SecurityGroup,  # kept for interface compatibility
         db_instance: rds.DatabaseInstance,
         db_secret: secretsmanager.ISecret,
         videos_bucket: s3.Bucket,
@@ -71,13 +71,9 @@ class ApiStack(cdk.Stack):
         # Resolve the path to the lambdas directory (one level up from cdk/)
         lambdas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "lambdas")
 
-        # Shared Lambda props for VPC placement
-        vpc_props = {
-            "vpc": vpc,
-            "vpc_subnets": ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-            "security_groups": [lambda_security_group],
-            "allow_public_subnet": True,  # required when placing Lambda in public subnet
-        }
+        # NOTE: Lambdas run outside VPC for hackathon.
+        # RDS is publicly accessible, so Lambdas reach it via public endpoint.
+        # This avoids the need for NAT gateway or VPC endpoints.
 
         # =====================================================================
         # Lambda Functions
@@ -99,7 +95,6 @@ class ApiStack(cdk.Stack):
                 "FB_APP_ID": self.node.try_get_context("fb_app_id") or "REPLACE_WITH_YOUR_FB_APP_ID",
                 "FB_APP_SECRET_ARN": fb_secret.secret_arn,
             },
-            **vpc_props,
         )
         db_secret.grant_read(auth_callback_fn)
         fb_secret.grant_read(auth_callback_fn)
@@ -118,7 +113,6 @@ class ApiStack(cdk.Stack):
             environment={
                 "VIDEOS_BUCKET": videos_bucket.bucket_name,
             },
-            **vpc_props,
         )
         videos_bucket.grant_put(presign_upload_fn)
 
@@ -134,7 +128,6 @@ class ApiStack(cdk.Stack):
             memory_size=256,
             timeout=cdk.Duration.seconds(10),
             environment={**db_env},
-            **vpc_props,
         )
         db_secret.grant_read(creator_profile_fn)
 
@@ -150,7 +143,6 @@ class ApiStack(cdk.Stack):
             memory_size=256,
             timeout=cdk.Duration.seconds(30),
             environment={**db_env},
-            **vpc_props,
         )
         db_secret.grant_read(rate_benchmark_fn)
 
@@ -169,7 +161,6 @@ class ApiStack(cdk.Stack):
                 **db_env,
                 "FRAMES_BUCKET": frames_bucket.bucket_name,
             },
-            **vpc_props,
         )
         db_secret.grant_read(mediakit_data_fn)
         frames_bucket.grant_read(mediakit_data_fn)
@@ -192,7 +183,6 @@ class ApiStack(cdk.Stack):
                 **db_env,
                 "MEDIAKITS_BUCKET": mediakits_bucket.bucket_name,
             },
-            **vpc_props,
         )
         db_secret.grant_read(mediakit_pdf_fn)
         mediakits_bucket.grant_read_write(mediakit_pdf_fn)

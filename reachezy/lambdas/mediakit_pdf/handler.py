@@ -16,13 +16,13 @@ def _fetch_creator_data(creator_id):
     # Fetch creator + rate card
     cur.execute(
         """
-        SELECT c.ig_username, c.full_name, c.bio, c.followers_count,
-               c.media_count, c.profile_pic_url, c.niche, c.city,
+        SELECT c.username, c.display_name, c.bio, c.followers_count,
+               c.media_count, c.profile_picture_url, c.niche, c.city,
                c.style_profile,
                rc.reel_rate, rc.story_rate, rc.post_rate, rc.accepts_barter
         FROM creators c
-        LEFT JOIN rate_cards rc ON c.creator_id = rc.creator_id
-        WHERE c.creator_id = %s
+        LEFT JOIN rate_cards rc ON c.id = rc.creator_id
+        WHERE c.id = %s
         """,
         (creator_id,),
     )

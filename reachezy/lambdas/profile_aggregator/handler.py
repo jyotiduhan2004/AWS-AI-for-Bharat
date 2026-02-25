@@ -91,7 +91,7 @@ def handler(event, context):
                va.production_quality, va.content_type, va.topics,
                va.dominant_colors, va.has_text_overlay, va.face_visible, va.summary
         FROM video_analyses va
-        JOIN video_uploads vu ON va.video_id = vu.video_id
+        JOIN video_uploads vu ON va.video_id = vu.id
         WHERE va.creator_id = %s
         ORDER BY vu.created_at DESC
         """,
@@ -179,8 +179,7 @@ def handler(event, context):
             ON CONFLICT (creator_id, is_creator_aggregate)
                 WHERE is_creator_aggregate = TRUE
             DO UPDATE SET
-                embedding = EXCLUDED.embedding,
-                updated_at = NOW()
+                embedding = EXCLUDED.embedding
             """,
             (video_id, creator_id, embedding_str),
         )
@@ -190,7 +189,7 @@ def handler(event, context):
         """
         UPDATE creators
         SET style_profile = %s::jsonb, updated_at = NOW()
-        WHERE creator_id = %s
+        WHERE id = %s
         """,
         (json.dumps(style_profile), creator_id),
     )
@@ -199,7 +198,7 @@ def handler(event, context):
     cur.execute(
         """
         UPDATE video_uploads
-        SET status = 'completed', updated_at = NOW()
+        SET status = 'completed'
         WHERE creator_id = %s AND status IN ('uploaded', 'processing')
         """,
         (creator_id,),

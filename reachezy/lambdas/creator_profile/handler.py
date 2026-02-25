@@ -24,8 +24,8 @@ def _get_creator(cognito_sub):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT creator_id, cognito_sub, ig_user_id, ig_username, full_name,
-               bio, followers_count, media_count, profile_pic_url,
+        SELECT id, cognito_sub, instagram_id, username, display_name,
+               bio, followers_count, media_count, profile_picture_url,
                niche, niche_is_custom, city, style_profile, created_at, updated_at
         FROM creators
         WHERE cognito_sub = %s
@@ -39,13 +39,13 @@ def _get_creator(cognito_sub):
     return {
         "creator_id": str(row[0]),
         "cognito_sub": row[1],
-        "ig_user_id": row[2],
-        "ig_username": row[3],
-        "full_name": row[4],
+        "instagram_id": row[2],
+        "username": row[3],
+        "display_name": row[4],
         "bio": row[5],
         "followers_count": row[6],
         "media_count": row[7],
-        "profile_pic_url": row[8],
+        "profile_picture_url": row[8],
         "niche": row[9],
         "niche_is_custom": row[10],
         "city": row[11],
@@ -66,7 +66,7 @@ def _update_creator(cognito_sub, niche, city):
         UPDATE creators
         SET niche = %s, niche_is_custom = %s, city = %s, updated_at = NOW()
         WHERE cognito_sub = %s
-        RETURNING creator_id
+        RETURNING id
         """,
         (niche, niche_is_custom, city, cognito_sub),
     )

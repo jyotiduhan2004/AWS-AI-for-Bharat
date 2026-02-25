@@ -25,13 +25,13 @@ def handler(event, context):
         # Fetch creator by username (JOIN with rate_cards)
         cur.execute(
             """
-            SELECT c.creator_id, c.ig_username, c.full_name, c.bio,
-                   c.followers_count, c.media_count, c.profile_pic_url,
+            SELECT c.id, c.username, c.display_name, c.bio,
+                   c.followers_count, c.media_count, c.profile_picture_url,
                    c.niche, c.city, c.style_profile,
                    rc.reel_rate, rc.story_rate, rc.post_rate, rc.accepts_barter
             FROM creators c
-            LEFT JOIN rate_cards rc ON c.creator_id = rc.creator_id
-            WHERE c.ig_username = %s
+            LEFT JOIN rate_cards rc ON c.id = rc.creator_id
+            WHERE c.username = %s
             """,
             (username,),
         )
@@ -51,12 +51,12 @@ def handler(event, context):
 
         creator = {
             "creator_id": str(creator_id),
-            "ig_username": row[1],
-            "full_name": row[2],
+            "username": row[1],
+            "display_name": row[2],
             "bio": row[3],
             "followers_count": followers_count,
             "media_count": row[5],
-            "profile_pic_url": row[6],
+            "profile_picture_url": row[6],
             "niche": niche,
             "city": row[8],
             "style_profile": style_profile if isinstance(style_profile, dict) else (
@@ -77,7 +77,7 @@ def handler(event, context):
                    va.production_quality, va.content_type, va.topics,
                    va.summary, vu.s3_key, vu.duration_seconds
             FROM video_analyses va
-            JOIN video_uploads vu ON va.video_id = vu.video_id
+            JOIN video_uploads vu ON va.video_id = vu.id
             WHERE va.creator_id = %s
             ORDER BY vu.created_at DESC
             """,
@@ -117,7 +117,7 @@ def handler(event, context):
             for ct in CONTENT_TYPES:
                 cur.execute(
                     """
-                    SELECT p25, p50, p75, min_rate, max_rate
+                    SELECT rate_low, rate_high
                     FROM rate_benchmarks
                     WHERE niche = %s AND follower_bucket = %s AND content_type = %s
                     """,
@@ -126,11 +126,8 @@ def handler(event, context):
                 brow = cur.fetchone()
                 if brow:
                     benchmarks[ct] = {
-                        "p25": float(brow[0]) if brow[0] is not None else None,
-                        "p50": float(brow[1]) if brow[1] is not None else None,
-                        "p75": float(brow[2]) if brow[2] is not None else None,
-                        "min_rate": float(brow[3]) if brow[3] is not None else None,
-                        "max_rate": float(brow[4]) if brow[4] is not None else None,
+                        "rate_low": float(brow[0]) if brow[0] is not None else None,
+                        "rate_high": float(brow[1]) if brow[1] is not None else None,
                     }
 
         # Increment mediakit_views counter
@@ -138,7 +135,7 @@ def handler(event, context):
             """
             UPDATE creators
             SET mediakit_views = COALESCE(mediakit_views, 0) + 1
-            WHERE creator_id = %s
+            WHERE id = %s
             """,
             (creator_id,),
         )
