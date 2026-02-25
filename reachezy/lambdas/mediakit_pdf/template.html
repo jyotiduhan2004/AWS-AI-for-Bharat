@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Kit - @{{username}}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            color: #1a1a2e;
+            background: #ffffff;
+            line-height: 1.5;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Header / Hero */
+        .header {
+            background: linear-gradient(135deg, #4c1d95, #6d28d9, #7c3aed);
+            color: #ffffff;
+            padding: 40px 40px 35px 40px;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #ffffff;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .profile-pic {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.2);
+            object-fit: cover;
+        }
+
+        .profile-pic-placeholder {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .profile-info h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            letter-spacing: -0.5px;
+        }
+
+        .profile-info .handle {
+            font-size: 16px;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+
+        .profile-info .location {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .bio {
+            margin-top: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            opacity: 0.9;
+            max-width: 480px;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            padding: 20px 40px 10px 40px;
+            margin-top: -5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-card {
+            flex: 1;
+            text-align: center;
+            background: #f8f5ff;
+            border: 1px solid #e9e0f7;
+            border-radius: 12px;
+            padding: 16px 12px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #5b21b6;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        /* Section styling */
+        .section {
+            padding: 18px 40px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #4c1d95;
+            margin-bottom: 14px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #ede9fe;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Niche Badge */
+        .niche-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #6d28d9, #7c3aed);
+            color: #ffffff;
+            padding: 5px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 14px;
+        }
+
+        /* Content Style Grid */
+        .style-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .style-item {
+            flex: 1 1 45%;
+            background: #faf8ff;
+            border: 1px solid #e9e0f7;
+            border-radius: 10px;
+            padding: 12px 16px;
+        }
+
+        .style-item-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #7c3aed;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .style-item-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            text-transform: capitalize;
+        }
+
+        .topics-row {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .topic-tag {
+            display: inline-block;
+            background: #ede9fe;
+            color: #5b21b6;
+            padding: 4px 12px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* Rate Card */
+        .rate-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #e9e0f7;
+        }
+
+        .rate-table thead th {
+            background: #5b21b6;
+            color: #ffffff;
+            padding: 10px 16px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .rate-table tbody td {
+            padding: 12px 16px;
+            font-size: 14px;
+            border-bottom: 1px solid #f3f0fa;
+        }
+
+        .rate-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .rate-table tbody tr:nth-child(even) {
+            background: #faf8ff;
+        }
+
+        .rate-amount {
+            font-weight: 700;
+            color: #4c1d95;
+        }
+
+        /* Metrics Row */
+        .metrics-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .metric-pill {
+            flex: 1;
+            text-align: center;
+            background: #f8f5ff;
+            border: 1px solid #e9e0f7;
+            border-radius: 10px;
+            padding: 10px 8px;
+        }
+
+        .metric-pill-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #5b21b6;
+        }
+
+        .metric-pill-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        /* Footer */
+        .footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 14px 40px;
+            background: #f8f5ff;
+            border-top: 1px solid #ede9fe;
+            font-size: 11px;
+            color: #7c3aed;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+
+        <!-- Header / Profile -->
+        <div class="header">
+            <div class="profile-section">
+                <div class="profile-pic-placeholder">{{username}}</div>
+                <div class="profile-info">
+                    <h1>{{full_name}}</h1>
+                    <div class="handle">@{{username}}</div>
+                    <div class="location">{{city}}</div>
+                </div>
+            </div>
+            <div class="bio">{{bio}}</div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value">{{followers_count}}</div>
+                <div class="stat-label">Followers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{follower_bucket}}</div>
+                <div class="stat-label">Tier</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{media_count}}</div>
+                <div class="stat-label">Posts</div>
+            </div>
+        </div>
+
+        <!-- Content Style Section -->
+        <div class="section">
+            <div class="section-title">Content Style</div>
+            <div class="niche-badge">{{niche}}</div>
+
+            <div class="style-grid">
+                <div class="style-item">
+                    <div class="style-item-label">Energy</div>
+                    <div class="style-item-value">{{energy}}</div>
+                </div>
+                <div class="style-item">
+                    <div class="style-item-label">Aesthetic</div>
+                    <div class="style-item-value">{{aesthetic}}</div>
+                </div>
+                <div class="style-item">
+                    <div class="style-item-label">Format</div>
+                    <div class="style-item-value">{{content_format}}</div>
+                </div>
+                <div class="style-item">
+                    <div class="style-item-label">Production</div>
+                    <div class="style-item-value">{{production}}</div>
+                </div>
+            </div>
+
+            <div class="topics-row">
+                {{topics}}
+            </div>
+
+            <div class="metrics-row">
+                <div class="metric-pill">
+                    <div class="metric-pill-value">{{video_count}}</div>
+                    <div class="metric-pill-label">Videos Analyzed</div>
+                </div>
+                <div class="metric-pill">
+                    <div class="metric-pill-value">{{consistency_score}}</div>
+                    <div class="metric-pill-label">Consistency Score</div>
+                </div>
+                <div class="metric-pill">
+                    <div class="metric-pill-value">{{face_percentage}}%</div>
+                    <div class="metric-pill-label">Face Visibility</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rate Card Section -->
+        <div class="section">
+            <div class="section-title">Rate Card</div>
+            <table class="rate-table">
+                <thead>
+                    <tr>
+                        <th>Content Type</th>
+                        <th>Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Instagram Reel</td>
+                        <td class="rate-amount">{{reel_rate}}</td>
+                    </tr>
+                    <tr>
+                        <td>Instagram Story</td>
+                        <td class="rate-amount">{{story_rate}}</td>
+                    </tr>
+                    <tr>
+                        <td>Instagram Post</td>
+                        <td class="rate-amount">{{post_rate}}</td>
+                    </tr>
+                    <tr>
+                        <td>Accepts Barter</td>
+                        <td>{{accepts_barter}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            Powered by ReachEzy
+        </div>
+
+    </div>
+</body>
+</html>

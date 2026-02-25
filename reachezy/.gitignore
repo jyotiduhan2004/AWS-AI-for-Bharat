@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+__pycache__/
+*.pyc
+.venv/
+cdk.out/
+
+# Environment
+.env
+.env.local
+.env.production
+frontend/.env.local
+
+# Build
+frontend/.next/
+frontend/out/
+*.js.map
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lambda layers (built artifacts)
+layers/ffmpeg/*.zip
+layers/weasyprint/*.zip
+layers/ffmpeg/bin/
+layers/weasyprint/python/
+
+# CDK
+cdk.context.json
