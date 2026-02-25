@@ -32,6 +32,35 @@ class ApiStack(cdk.Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+        # ----- Facebook App Secret (stored in Secrets Manager) -----
+        # Pass via: cdk deploy -c fb_app_secret=YOUR_SECRET
+        fb_app_secret = self.node.try_get_context("fb_app_secret")
+        if fb_app_secret:
+            fb_secret = secretsmanager.Secret(
+                self,
+                "FbAppSecret",
+                secret_name="reachezy/fb-app-secret",
+                description="Meta/Facebook App Secret for ReachEzy Instagram OAuth",
+                secret_string_value=cdk.SecretValue.unsafe_plain_text(fb_app_secret),
+            )
+        else:
+            fb_secret = secretsmanager.Secret.from_secret_name_v2(
+                self,
+                "FbAppSecret",
+                secret_name="reachezy/fb-app-secret",
+            )
+
+        # ----- Shared dependencies Lambda Layer (psycopg2, requests, shared modules) -----
+        layers_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "layers")
+        shared_layer = _lambda.LayerVersion(
+            self,
+            "SharedDepsLayer",
+            layer_version_name="reachezy-shared-deps",
+            code=_lambda.Code.from_asset(os.path.join(layers_dir, "shared-deps")),
+            compatible_runtimes=[_lambda.Runtime.PYTHON_3_12],
+            description="psycopg2-binary, requests, and shared modules for ReachEzy Lambdas",
+        )
+
         # Common environment variables shared by most Lambdas
         db_env = {
             "DB_HOST": db_instance.db_instance_endpoint_address,
@@ -62,19 +91,18 @@ class ApiStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "auth_callback")),
+            layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(30),
             environment={
                 **db_env,
-                # REPLACE_WITH_FB_APP_ID — set your Facebook App ID here
-                "FB_APP_ID": "REPLACE_WITH_FB_APP_ID",
-                # The Facebook App Secret should be stored in Secrets Manager.
-                # Create a secret and paste its ARN below.
-                "FB_APP_SECRET_ARN": "REPLACE_WITH_FB_APP_SECRET_ARN",
+                "FB_APP_ID": self.node.try_get_context("fb_app_id") or "REPLACE_WITH_YOUR_FB_APP_ID",
+                "FB_APP_SECRET_ARN": fb_secret.secret_arn,
             },
             **vpc_props,
         )
         db_secret.grant_read(auth_callback_fn)
+        fb_secret.grant_read(auth_callback_fn)
 
         # ----- 2. presign_upload — POST /upload/presign -----
         presign_upload_fn = _lambda.Function(
@@ -84,6 +112,7 @@ class ApiStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "presign_upload")),
+            layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(10),
             environment={
@@ -101,6 +130,7 @@ class ApiStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "creator_profile")),
+            layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(10),
             environment={**db_env},
@@ -116,6 +146,7 @@ class ApiStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "rate_benchmark")),
+            layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(30),
             environment={**db_env},
@@ -131,6 +162,7 @@ class ApiStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "mediakit_data")),
+            layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(10),
             environment={
@@ -153,6 +185,7 @@ class ApiStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "mediakit_pdf")),
+            layers=[shared_layer],
             memory_size=512,
             timeout=cdk.Duration.seconds(60),
             environment={

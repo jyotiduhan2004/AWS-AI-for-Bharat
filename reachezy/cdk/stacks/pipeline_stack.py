@@ -39,6 +39,17 @@ class PipelineStack(cdk.Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         lambdas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "lambdas")
+        layers_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "layers")
+
+        # ----- Shared dependencies Lambda Layer -----
+        shared_layer = _lambda.LayerVersion(
+            self,
+            "SharedDepsLayer",
+            layer_version_name="reachezy-pipeline-shared-deps",
+            code=_lambda.Code.from_asset(os.path.join(layers_dir, "shared-deps")),
+            compatible_runtimes=[_lambda.Runtime.PYTHON_3_12],
+            description="psycopg2-binary, requests, and shared modules for pipeline Lambdas",
+        )
 
         # Common environment variables
         base_env = {
@@ -72,6 +83,7 @@ class PipelineStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "frame_extractor")),
+            layers=[shared_layer],
             memory_size=512,
             timeout=cdk.Duration.seconds(120),
             environment={
@@ -98,6 +110,7 @@ class PipelineStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "video_analyzer")),
+            layers=[shared_layer],
             memory_size=1024,
             timeout=cdk.Duration.seconds(180),  # Claude calls can be slow
             environment={
@@ -125,6 +138,7 @@ class PipelineStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "embedding_generator")),
+            layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(60),
             environment={
@@ -151,6 +165,7 @@ class PipelineStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "profile_aggregator")),
+            layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(60),
             environment={**base_env},

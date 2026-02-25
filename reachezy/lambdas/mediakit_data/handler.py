@@ -1,8 +1,4 @@
-import sys
 import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import json
 import boto3
 from shared.db import get_db_connection

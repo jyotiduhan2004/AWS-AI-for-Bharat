@@ -1,8 +1,4 @@
-import sys
 import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import json
 import boto3
 import requests
@@ -15,8 +11,13 @@ def _get_fb_app_secret():
     """Fetch Facebook App Secret from Secrets Manager."""
     sm = boto3.client("secretsmanager")
     resp = sm.get_secret_value(SecretId=os.environ["FB_APP_SECRET_ARN"])
-    secret = json.loads(resp["SecretString"])
-    return secret.get("FB_APP_SECRET") or secret.get("value") or resp["SecretString"]
+    raw = resp["SecretString"]
+    # Handle both plain-text and JSON-formatted secrets
+    try:
+        secret = json.loads(raw)
+        return secret.get("FB_APP_SECRET") or secret.get("value") or raw
+    except (json.JSONDecodeError, TypeError):
+        return raw
 
 
 def _exchange_long_lived_token(short_token, app_id, app_secret):
@@ -135,20 +136,20 @@ def handler(event, context):
         cur.execute(
             """
             INSERT INTO creators (
-                cognito_sub, ig_user_id, ig_username, full_name,
-                bio, followers_count, media_count, profile_pic_url
+                cognito_sub, instagram_id, username, display_name,
+                bio, followers_count, media_count, profile_picture_url
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (cognito_sub) DO UPDATE SET
-                ig_user_id = EXCLUDED.ig_user_id,
-                ig_username = EXCLUDED.ig_username,
-                full_name = EXCLUDED.full_name,
+                instagram_id = EXCLUDED.instagram_id,
+                username = EXCLUDED.username,
+                display_name = EXCLUDED.display_name,
                 bio = EXCLUDED.bio,
                 followers_count = EXCLUDED.followers_count,
                 media_count = EXCLUDED.media_count,
-                profile_pic_url = EXCLUDED.profile_pic_url,
+                profile_picture_url = EXCLUDED.profile_picture_url,
                 updated_at = NOW()
-            RETURNING creator_id
+            RETURNING id
             """,
             (
                 cognito_sub,
@@ -169,13 +170,13 @@ def handler(event, context):
 
         result = {
             "creator_id": str(creator_id),
-            "ig_user_id": profile.get("id"),
-            "ig_username": profile.get("username"),
-            "full_name": profile.get("name"),
+            "instagram_id": profile.get("id"),
+            "username": profile.get("username"),
+            "display_name": profile.get("name"),
             "bio": profile.get("biography"),
             "followers_count": profile.get("followers_count"),
             "media_count": profile.get("media_count"),
-            "profile_pic_url": profile.get("profile_picture_url"),
+            "profile_picture_url": profile.get("profile_picture_url"),
         }
 
         return {

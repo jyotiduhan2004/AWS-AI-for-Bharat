@@ -35,7 +35,7 @@ VALUES (
     }'::jsonb,
     12
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (cognito_sub) DO NOTHING;
 
 INSERT INTO rate_cards (creator_id, niche, follower_bucket, reel_rate, story_rate, post_rate, accepts_barter)
 VALUES (
@@ -114,7 +114,7 @@ VALUES (
     }'::jsonb,
     34
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (cognito_sub) DO NOTHING;
 
 INSERT INTO rate_cards (creator_id, niche, follower_bucket, reel_rate, story_rate, post_rate, accepts_barter)
 VALUES (
@@ -191,7 +191,7 @@ VALUES (
     }'::jsonb,
     8
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (cognito_sub) DO NOTHING;
 
 INSERT INTO rate_cards (creator_id, niche, follower_bucket, reel_rate, story_rate, post_rate, accepts_barter)
 VALUES (
@@ -268,7 +268,7 @@ VALUES (
     }'::jsonb,
     22
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (cognito_sub) DO NOTHING;
 
 INSERT INTO rate_cards (creator_id, niche, follower_bucket, reel_rate, story_rate, post_rate, accepts_barter)
 VALUES (
@@ -345,7 +345,7 @@ VALUES (
     }'::jsonb,
     67
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (cognito_sub) DO NOTHING;
 
 INSERT INTO rate_cards (creator_id, niche, follower_bucket, reel_rate, story_rate, post_rate, accepts_barter)
 VALUES (
@@ -422,7 +422,7 @@ VALUES (
     }'::jsonb,
     18
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (cognito_sub) DO NOTHING;
 
 INSERT INTO rate_cards (creator_id, niche, follower_bucket, reel_rate, story_rate, post_rate, accepts_barter)
 VALUES (
@@ -499,7 +499,7 @@ VALUES (
     }'::jsonb,
     29
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (cognito_sub) DO NOTHING;
 
 INSERT INTO rate_cards (creator_id, niche, follower_bucket, reel_rate, story_rate, post_rate, accepts_barter)
 VALUES (
@@ -576,7 +576,7 @@ VALUES (
     }'::jsonb,
     4
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (cognito_sub) DO NOTHING;
 
 INSERT INTO rate_cards (creator_id, niche, follower_bucket, reel_rate, story_rate, post_rate, accepts_barter)
 VALUES (

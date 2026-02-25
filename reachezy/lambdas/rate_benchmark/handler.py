@@ -1,8 +1,3 @@
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 import json
 from shared.db import get_db_connection
 from shared.models import get_follower_bucket, NICHES, CONTENT_TYPES

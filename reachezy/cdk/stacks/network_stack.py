@@ -61,7 +61,7 @@ class NetworkStack(cdk.Stack):
         self._rds_sg.add_ingress_rule(
             peer=ec2.Peer.any_ipv4(),
             connection=ec2.Port.tcp(5432),
-            description="HACKATHON ONLY — allow Postgres from anywhere. Lock down for prod!",
+            description="HACKATHON ONLY - allow Postgres from anywhere. Lock down for prod!",
         )
 
     # ---------- Exported properties ----------
