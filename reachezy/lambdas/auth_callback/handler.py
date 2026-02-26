@@ -1,10 +1,14 @@
 import os
 import json
+import uuid
+import hashlib
+import hmac
+import time
 import boto3
 import requests
 from shared.db import get_db_connection
 
-GRAPH_API = "https://graph.facebook.com/v19.0"
+GRAPH_API = "https://graph.facebook.com/v21.0"
 
 
 def _get_fb_app_secret():
@@ -12,12 +16,30 @@ def _get_fb_app_secret():
     sm = boto3.client("secretsmanager")
     resp = sm.get_secret_value(SecretId=os.environ["FB_APP_SECRET_ARN"])
     raw = resp["SecretString"]
-    # Handle both plain-text and JSON-formatted secrets
     try:
         secret = json.loads(raw)
         return secret.get("FB_APP_SECRET") or secret.get("value") or raw
     except (json.JSONDecodeError, TypeError):
         return raw
+
+
+def _exchange_code_for_token(code, redirect_uri, app_id, app_secret):
+    """Exchange Facebook authorization code for an access token."""
+    resp = requests.get(
+        f"{GRAPH_API}/oauth/access_token",
+        params={
+            "client_id": app_id,
+            "client_secret": app_secret,
+            "redirect_uri": redirect_uri,
+            "code": code,
+        },
+        timeout=10,
+    )
+    if not resp.ok:
+        print(f"FB code exchange error: {resp.status_code} {resp.text}")
+        resp.raise_for_status()
+    data = resp.json()
+    return data["access_token"]
 
 
 def _exchange_long_lived_token(short_token, app_id, app_secret):
@@ -39,49 +61,107 @@ def _exchange_long_lived_token(short_token, app_id, app_secret):
 
 def _get_instagram_profile(long_lived_token):
     """Fetch the Instagram Business/Creator account linked to the Facebook user."""
-    # Step 1: Get Facebook Pages
+    """Try multiple approaches to find the Instagram Business account."""
+    ig_id = None
+    profile_fields = "id,username,name,biography,followers_count,media_count,profile_picture_url"
+
+    # Approach 1: Via Pages (needs pages_show_list)
     pages_resp = requests.get(
         f"{GRAPH_API}/me/accounts",
         params={"access_token": long_lived_token},
         timeout=10,
     )
-    pages_resp.raise_for_status()
-    pages = pages_resp.json().get("data", [])
+    if pages_resp.ok:
+        pages = pages_resp.json().get("data", [])
+        if pages:
+            page = pages[0]
+            ig_resp = requests.get(
+                f"{GRAPH_API}/{page['id']}",
+                params={"fields": "instagram_business_account", "access_token": page.get("access_token", long_lived_token)},
+                timeout=10,
+            )
+            if ig_resp.ok:
+                ig_account = ig_resp.json().get("instagram_business_account")
+                if ig_account:
+                    ig_id = ig_account["id"]
+                    print(f"Approach 1: Found IG via Pages: {ig_id}")
 
-    if not pages:
-        raise ValueError("No Facebook Pages found for this user")
+    # Approach 2: Via /me/businesses -> owned_instagram_accounts
+    if not ig_id:
+        print("Approach 2: Trying via businesses...")
+        biz_resp = requests.get(
+            f"{GRAPH_API}/me/businesses",
+            params={"access_token": long_lived_token},
+            timeout=10,
+        )
+        print(f"Businesses response: {biz_resp.status_code} {biz_resp.text[:500]}")
+        if biz_resp.ok:
+            businesses = biz_resp.json().get("data", [])
+            for biz in businesses:
+                ig_biz_resp = requests.get(
+                    f"{GRAPH_API}/{biz['id']}/owned_instagram_accounts",
+                    params={"fields": profile_fields, "access_token": long_lived_token},
+                    timeout=10,
+                )
+                print(f"Biz {biz['id']} IG accounts: {ig_biz_resp.status_code} {ig_biz_resp.text[:500]}")
+                if ig_biz_resp.ok:
+                    ig_accounts = ig_biz_resp.json().get("data", [])
+                    if ig_accounts:
+                        print(f"Approach 2: Found IG via business: {ig_accounts[0].get('username')}")
+                        return ig_accounts[0], long_lived_token
 
-    page = pages[0]
-    page_id = page["id"]
-    page_token = page["access_token"]
+    # Approach 3: Try /me?fields=accounts with instagram_business_account
+    if not ig_id:
+        print("Approach 3: Trying /me?fields=accounts...")
+        me_resp = requests.get(
+            f"{GRAPH_API}/me",
+            params={"fields": "accounts{instagram_business_account{" + profile_fields + "}}", "access_token": long_lived_token},
+            timeout=10,
+        )
+        print(f"Me accounts response: {me_resp.status_code} {me_resp.text[:500]}")
+        if me_resp.ok:
+            accounts = me_resp.json().get("accounts", {}).get("data", [])
+            for acc in accounts:
+                ig_account = acc.get("instagram_business_account")
+                if ig_account:
+                    ig_id = ig_account.get("id")
+                    print(f"Approach 3: Found IG: {ig_id}")
+                    return ig_account, long_lived_token
 
-    # Step 2: Get Instagram Business Account linked to the Page
-    ig_resp = requests.get(
-        f"{GRAPH_API}/{page_id}",
-        params={
-            "fields": "instagram_business_account",
-            "access_token": page_token,
-        },
-        timeout=10,
-    )
-    ig_resp.raise_for_status()
-    ig_data = ig_resp.json()
-    ig_account = ig_data.get("instagram_business_account")
+    # Approach 4: Try debug_token to find granted Instagram accounts
+    if not ig_id:
+        print("Approach 4: Trying debug_token for granted assets...")
+        app_token = f"{os.environ['FB_APP_ID']}|{_get_fb_app_secret()}"
+        debug_resp = requests.get(
+            f"{GRAPH_API}/debug_token",
+            params={"input_token": long_lived_token, "access_token": app_token},
+            timeout=10,
+        )
+        print(f"Debug token response: {debug_resp.status_code} {debug_resp.text[:1000]}")
+        if debug_resp.ok:
+            debug_data = debug_resp.json().get("data", {})
+            granular = debug_data.get("granular_scopes", [])
+            for scope in granular:
+                if scope.get("scope") == "instagram_basic":
+                    target_ids = scope.get("target_ids", [])
+                    if target_ids:
+                        ig_id = target_ids[0]
+                        print(f"Approach 4: Found IG ID from debug_token: {ig_id}")
+                        break
 
-    if not ig_account:
-        raise ValueError("No Instagram Business Account linked to this Facebook Page")
+    if not ig_id:
+        raise ValueError(
+            "Could not find Instagram Business Account. "
+            "Please ensure your Instagram is a Business/Creator account linked to a Facebook Page."
+        )
 
-    ig_id = ig_account["id"]
-
-    # Step 3: Fetch Instagram profile details
+    # Fetch full Instagram profile
     profile_resp = requests.get(
         f"{GRAPH_API}/{ig_id}",
-        params={
-            "fields": "id,username,name,biography,followers_count,media_count,profile_picture_url",
-            "access_token": long_lived_token,
-        },
+        params={"fields": profile_fields, "access_token": long_lived_token},
         timeout=10,
     )
+    print(f"Profile fetch: {profile_resp.status_code} {profile_resp.text[:500]}")
     profile_resp.raise_for_status()
     profile = profile_resp.json()
 
@@ -100,35 +180,66 @@ def _store_instagram_token(creator_id, token):
         sm.put_secret_value(SecretId=secret_name, SecretString=secret_value)
 
 
+def _generate_session_token(creator_id, username, cognito_sub):
+    """Generate a simple session token for the creator."""
+    payload = {
+        "creator_id": str(creator_id),
+        "cognito_sub": cognito_sub,
+        "username": username or "",
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 86400 * 7,  # 7 days
+        "jti": str(uuid.uuid4()),
+    }
+    return json.dumps(payload)
+
+
 def handler(event, context):
-    """Cognito Post-Authentication trigger OR direct API call."""
+    """Handle Facebook OAuth callback — exchange code for token, fetch Instagram profile."""
     try:
-        # Parse input — support both API Gateway and direct invocation
+        print(f"Event keys: {list(event.keys()) if isinstance(event, dict) else type(event)}")
         if "body" in event:
             body = json.loads(event["body"]) if isinstance(event["body"], str) else event["body"]
         else:
             body = event
 
-        fb_access_token = body.get("fb_access_token")
-        cognito_sub = body.get("cognito_sub")
+        print(f"Parsed body keys: {list(body.keys()) if isinstance(body, dict) else type(body)}")
 
-        if not fb_access_token or not cognito_sub:
+        # Support both flows: code-based (new) and token-based (legacy)
+        code = body.get("code")
+        redirect_uri = body.get("redirect_uri")
+        fb_access_token = body.get("fb_access_token")
+        print(f"code={bool(code)}, redirect_uri={redirect_uri}, fb_access_token={bool(fb_access_token)}")
+
+        app_id = os.environ["FB_APP_ID"]
+        app_secret = _get_fb_app_secret()
+
+        if code and redirect_uri:
+            # New flow: exchange authorization code for access token
+            print(f"Exchanging code for token with redirect_uri={redirect_uri}")
+            fb_access_token = _exchange_code_for_token(code, redirect_uri, app_id, app_secret)
+            print("Code exchange successful")
+        elif not fb_access_token:
             return {
                 "statusCode": 400,
                 "headers": {
                     "Access-Control-Allow-Origin": "*",
                     "Content-Type": "application/json",
                 },
-                "body": json.dumps({"error": "fb_access_token and cognito_sub are required"}),
+                "body": json.dumps({"error": "Either 'code'+'redirect_uri' or 'fb_access_token' is required"}),
             }
 
         # Exchange for long-lived token
-        app_id = os.environ["FB_APP_ID"]
-        app_secret = _get_fb_app_secret()
+        print("Exchanging for long-lived token...")
         long_lived_token = _exchange_long_lived_token(fb_access_token, app_id, app_secret)
+        print("Long-lived token obtained")
 
         # Fetch Instagram profile
+        print("Fetching Instagram profile...")
         profile, token = _get_instagram_profile(long_lived_token)
+        print(f"Instagram profile fetched: {profile.get('username')}")
+
+        # Use instagram ID as a stable identifier
+        cognito_sub = f"fb_{profile.get('id', str(uuid.uuid4()))}"
 
         # Upsert into creators table
         conn = get_db_connection()
@@ -168,6 +279,9 @@ def handler(event, context):
         # Store Instagram token in Secrets Manager
         _store_instagram_token(creator_id, token)
 
+        # Generate session token
+        session_token = _generate_session_token(creator_id, profile.get("username"), cognito_sub)
+
         result = {
             "creator_id": str(creator_id),
             "instagram_id": profile.get("id"),
@@ -177,6 +291,7 @@ def handler(event, context):
             "followers_count": profile.get("followers_count"),
             "media_count": profile.get("media_count"),
             "profile_picture_url": profile.get("profile_picture_url"),
+            "session_token": session_token,
         }
 
         return {
@@ -189,6 +304,7 @@ def handler(event, context):
         }
 
     except ValueError as ve:
+        print(f"ValueError in auth_callback: {ve}")
         return {
             "statusCode": 400,
             "headers": {

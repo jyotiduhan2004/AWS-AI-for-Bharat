@@ -298,33 +298,35 @@ def _compute_overall_benchmark(cur, follower_bucket, content_type, rate):
 
 
 def _build_response(cur, creator_id, niche, follower_bucket, rate_card):
-    """Build the full benchmarks response."""
-    benchmarks = {}
+    """Build the full benchmarks response in frontend-expected format."""
+    niche_benchmarks = {}
+    overall_benchmarks = {}
+    source = "seed"
+    sample_size = 0
 
     for ct in CONTENT_TYPES:
         rate = rate_card.get(f"{ct}_rate")
-        benchmarks[ct] = _compute_benchmark(cur, niche, follower_bucket, ct, rate)
+        niche_bm = _compute_benchmark(cur, niche, follower_bucket, ct, rate)
+        overall_bm = _compute_overall_benchmark(cur, follower_bucket, ct, rate)
+        niche_benchmarks[ct] = niche_bm.get("percentile") or 50
+        overall_benchmarks[ct] = overall_bm.get("percentile") or 50
+        if niche_bm.get("source"):
+            source = niche_bm["source"]
+        if niche_bm.get("sample_size", 0) > sample_size:
+            sample_size = niche_bm["sample_size"]
 
-    # Overall benchmark: average the rates that exist for an overall view
-    available_rates = [rate_card.get(f"{ct}_rate") for ct in CONTENT_TYPES if rate_card.get(f"{ct}_rate")]
-    if available_rates:
-        avg_rate = sum(available_rates) / len(available_rates)
-        # Use reel as proxy for overall since it's the most common format
-        benchmarks["overall"] = _compute_overall_benchmark(cur, follower_bucket, "reel", avg_rate)
-    else:
-        benchmarks["overall"] = {
-            "percentile": None,
-            "source": "insufficient_data",
-            "sample_size": 0,
-            "range_low": None,
-            "range_high": None,
-        }
-
+    # Return flat format matching frontend Rates interface
     return {
-        "niche": niche,
-        "follower_bucket": follower_bucket,
-        "rate_card": rate_card,
-        "benchmarks": benchmarks,
+        "reel_rate": rate_card.get("reel_rate"),
+        "story_rate": rate_card.get("story_rate"),
+        "post_rate": rate_card.get("post_rate"),
+        "accepts_barter": rate_card.get("accepts_barter"),
+        "benchmarks": {
+            "niche_percentile": niche_benchmarks,
+            "overall_percentile": overall_benchmarks,
+            "source": source,
+            "sample_size": sample_size,
+        },
     }
 
 

@@ -21,7 +21,7 @@ async function fetchAPI(path: string, options?: RequestInit) {
 
 export const api = {
   // Auth
-  authCallback: (data: { access_token: string }) =>
+  authCallback: (data: { code: string; redirect_uri: string }) =>
     fetchAPI('/auth/callback', { method: 'POST', body: JSON.stringify(data) }),
 
   // Profile
@@ -39,6 +39,13 @@ export const api = {
     content_type: string;
   }) =>
     fetchAPI('/upload/presign', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Analysis trigger
+  startAnalysis: (data: { creator_id: string }) =>
+    fetchAPI('/upload/presign', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'start_analysis', ...data }),
+    }),
 
   // Rates
   submitRates: (data: {

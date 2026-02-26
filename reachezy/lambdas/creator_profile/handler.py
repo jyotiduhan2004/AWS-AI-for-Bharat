@@ -4,7 +4,8 @@ from shared.models import NICHES
 
 
 def _get_cognito_sub(event):
-    """Extract cognito_sub from API Gateway JWT authorizer claims."""
+    """Extract cognito_sub from API Gateway JWT authorizer claims or custom session token."""
+    # Try Cognito JWT authorizer claims
     try:
         return event["requestContext"]["authorizer"]["claims"]["sub"]
     except (KeyError, TypeError):
@@ -13,6 +14,19 @@ def _get_cognito_sub(event):
         return event["requestContext"]["authorizer"]["jwt"]["claims"]["sub"]
     except (KeyError, TypeError):
         pass
+
+    # Try custom session token from Authorization header
+    try:
+        headers = event.get("headers") or {}
+        auth_header = headers.get("Authorization") or headers.get("authorization") or ""
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+            payload = json.loads(token)
+            if payload.get("cognito_sub"):
+                return payload["cognito_sub"]
+    except (json.JSONDecodeError, TypeError, KeyError):
+        pass
+
     # Fallback for direct invocation / testing
     params = event.get("queryStringParameters") or {}
     return params.get("cognito_sub")

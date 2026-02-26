@@ -1,16 +1,17 @@
-const COGNITO_DOMAIN = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
-const CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
+const FB_APP_ID = process.env.NEXT_PUBLIC_FB_APP_ID;
+const FB_CONFIG_ID = process.env.NEXT_PUBLIC_FB_CONFIG_ID;
 const REDIRECT_URI =
   typeof window !== 'undefined'
     ? `${window.location.origin}/auth/callback`
     : '';
 
 export function getLoginUrl(): string {
-  return `https://${COGNITO_DOMAIN}/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid+profile+email&identity_provider=Facebook`;
+  return `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&config_id=${FB_CONFIG_ID}&response_type=code`;
 }
 
 export function getLogoutUrl(): string {
-  return `https://${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
+  clearToken();
+  return '/';
 }
 
 export function setToken(token: string) {

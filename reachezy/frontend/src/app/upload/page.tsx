@@ -26,13 +26,22 @@ export default function UploadPage() {
     loadProfile();
   }, [router]);
 
-  const handleUploadComplete = () => {
+  const handleUploadComplete = async () => {
     setIsComplete(true);
     setIsAnalyzing(true);
 
+    // Trigger the video analysis pipeline
+    if (creatorId) {
+      try {
+        await api.startAnalysis({ creator_id: creatorId });
+      } catch (err) {
+        console.error('Failed to start analysis:', err);
+      }
+    }
+
     setTimeout(() => {
       setIsAnalyzing(false);
-    }, 3000);
+    }, 5000);
   };
 
   if (loading) {
