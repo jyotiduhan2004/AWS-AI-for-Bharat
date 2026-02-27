@@ -5,7 +5,7 @@ import re
 import boto3
 from shared.db import get_db_connection
 
-BEDROCK_MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+BEDROCK_MODEL_ID = "us.amazon.nova-lite-v1:0"
 
 ANALYSIS_PROMPT = """You are an expert content analyst for social media creators. Analyze these 4 frames extracted from a single video (taken at 0%, 25%, 50%, and 75% through the video).
 
@@ -92,16 +92,17 @@ def handler(event, context):
         "text": ANALYSIS_PROMPT,
     })
 
-    # Call Bedrock with Claude 3.5 Sonnet
+    # Call Bedrock with Amazon Nova Lite
     request_body = json.dumps({
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 1024,
         "messages": [
             {
                 "role": "user",
                 "content": image_content,
             }
         ],
+        "inferenceConfig": {
+            "maxTokens": 1024,
+        },
     })
 
     bedrock_response = bedrock.invoke_model(
@@ -112,7 +113,7 @@ def handler(event, context):
     )
 
     response_body = json.loads(bedrock_response["body"].read())
-    raw_text = response_body["content"][0]["text"]
+    raw_text = response_body["output"]["message"]["content"][0]["text"]
 
     # Parse JSON response with retry/fallback
     cleaned_text = _clean_json_response(raw_text)
