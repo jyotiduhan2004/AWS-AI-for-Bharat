@@ -85,7 +85,7 @@ export default function BenchmarkDisplay({
 }: BenchmarkDisplayProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  if (!benchmarks) {
+  if (!benchmarks || !benchmarks.niche_percentile || !benchmarks.overall_percentile) {
     return (
       <div className="rounded-lg bg-gray-50 p-4 text-center">
         <p className="text-sm text-gray-500">

@@ -22,16 +22,16 @@ VALUES (
     'https://demo.reachezy.in/avatars/priyabeauty.jpg',
     'Beauty/Cosmetics', 'Lucknow',
     '{
-        "energy_level": "high",
-        "aesthetic": "vibrant",
-        "setting": "indoor",
-        "production_quality": "decent",
-        "content_type": "tutorial",
+        "dominant_energy": "high",
+        "energy_score": 80,
+        "dominant_aesthetic": "vibrant",
+        "primary_content_type": "tutorial",
+        "style_summary": "Priya walks through a 5-step nighttime skincare routine using affordable Indian drugstore products, focusing on hydration for dry winter skin.",
         "consistency_score": 88,
-        "dominant_colors": ["#E91E63", "#FF9800", "#FFEB3B"],
         "topics": ["skincare", "makeup", "beauty", "indianskin", "affordable"],
-        "face_visible": true,
-        "has_text_overlay": true
+        "face_visible_pct": 100,
+        "text_overlay_pct": 100,
+        "settings": [{"name": "indoor", "pct": 100}]
     }'::jsonb,
     12
 )
@@ -101,16 +101,16 @@ VALUES (
     'https://demo.reachezy.in/avatars/rahulfashion.jpg',
     'Fashion', 'Mumbai',
     '{
-        "energy_level": "moderate",
-        "aesthetic": "professional",
-        "setting": "mixed",
-        "production_quality": "polished",
-        "content_type": "lifestyle",
+        "dominant_energy": "moderate",
+        "energy_score": 55,
+        "dominant_aesthetic": "professional",
+        "primary_content_type": "lifestyle",
+        "style_summary": "Rahul showcases curated streetwear looks shot on the streets of Bandra, pairing oversized silhouettes with Indian accessories.",
         "consistency_score": 92,
-        "dominant_colors": ["#212121", "#FFFFFF", "#1565C0"],
         "topics": ["fashion", "streetwear", "mensfashion", "style"],
-        "face_visible": true,
-        "has_text_overlay": false
+        "face_visible_pct": 100,
+        "text_overlay_pct": 0,
+        "settings": [{"name": "outdoor", "pct": 33}, {"name": "indoor", "pct": 33}, {"name": "mixed", "pct": 34}]
     }'::jsonb,
     34
 )
@@ -178,16 +178,16 @@ VALUES (
     'https://demo.reachezy.in/avatars/ananyafood.jpg',
     'Food', 'Bangalore',
     '{
-        "energy_level": "high",
-        "aesthetic": "vibrant",
-        "setting": "indoor",
-        "production_quality": "decent",
-        "content_type": "vlog",
+        "dominant_energy": "high",
+        "energy_score": 80,
+        "dominant_aesthetic": "vibrant",
+        "primary_content_type": "vlog",
+        "style_summary": "Ananya demonstrates her grandmother'\''s crispy ghee dosa recipe with three chutneys, filmed in her cozy Bangalore kitchen.",
         "consistency_score": 82,
-        "dominant_colors": ["#FF9800", "#4CAF50", "#FFEB3B"],
         "topics": ["food", "cooking", "southindian", "recipes", "homecooking"],
-        "face_visible": true,
-        "has_text_overlay": true
+        "face_visible_pct": 100,
+        "text_overlay_pct": 100,
+        "settings": [{"name": "indoor", "pct": 67}, {"name": "outdoor", "pct": 33}]
     }'::jsonb,
     8
 )
@@ -255,16 +255,16 @@ VALUES (
     'https://demo.reachezy.in/avatars/vikramfitness.jpg',
     'Fitness/Health', 'Delhi',
     '{
-        "energy_level": "chaotic",
-        "aesthetic": "minimal",
-        "setting": "mixed",
-        "production_quality": "decent",
-        "content_type": "tutorial",
+        "dominant_energy": "chaotic",
+        "energy_score": 90,
+        "dominant_aesthetic": "minimal",
+        "primary_content_type": "tutorial",
+        "style_summary": "Vikram breaks down a chest and triceps push day with form tips, filmed raw at a Delhi commercial gym.",
         "consistency_score": 79,
-        "dominant_colors": ["#212121", "#F44336", "#FFFFFF"],
         "topics": ["fitness", "gym", "workout", "health", "bodybuilding"],
-        "face_visible": true,
-        "has_text_overlay": true
+        "face_visible_pct": 100,
+        "text_overlay_pct": 100,
+        "settings": [{"name": "indoor", "pct": 67}, {"name": "outdoor", "pct": 33}]
     }'::jsonb,
     22
 )
@@ -332,16 +332,16 @@ VALUES (
     'https://demo.reachezy.in/avatars/snehacomedy.jpg',
     'Comedy/Entertainment', 'Ahmedabad',
     '{
-        "energy_level": "chaotic",
-        "aesthetic": "desi",
-        "setting": "indoor",
-        "production_quality": "raw",
-        "content_type": "comedy",
+        "dominant_energy": "chaotic",
+        "energy_score": 90,
+        "dominant_aesthetic": "desi",
+        "primary_content_type": "comedy",
+        "style_summary": "Sneha acts out the classic Indian parent phone call with spot-on accents and facial expressions. Hilarious and relatable.",
         "consistency_score": 85,
-        "dominant_colors": ["#FFEB3B", "#E91E63", "#FF5722"],
         "topics": ["comedy", "funny", "relatable", "desi", "humor"],
-        "face_visible": true,
-        "has_text_overlay": true
+        "face_visible_pct": 100,
+        "text_overlay_pct": 100,
+        "settings": [{"name": "indoor", "pct": 100}]
     }'::jsonb,
     67
 )
@@ -409,16 +409,16 @@ VALUES (
     'https://demo.reachezy.in/avatars/arjuntech.jpg',
     'Tech', 'Chennai',
     '{
-        "energy_level": "calm",
-        "aesthetic": "minimal",
-        "setting": "studio",
-        "production_quality": "polished",
-        "content_type": "review",
+        "dominant_energy": "calm",
+        "energy_score": 25,
+        "dominant_aesthetic": "minimal",
+        "primary_content_type": "review",
+        "style_summary": "Detailed camera comparison between two flagship phones under Rs 30K with side-by-side samples in day, night, and portrait modes.",
         "consistency_score": 91,
-        "dominant_colors": ["#37474F", "#FFFFFF", "#2196F3"],
         "topics": ["tech", "gadgets", "reviews", "smartphones", "unboxing"],
-        "face_visible": true,
-        "has_text_overlay": false
+        "face_visible_pct": 100,
+        "text_overlay_pct": 0,
+        "settings": [{"name": "studio", "pct": 100}]
     }'::jsonb,
     18
 )
@@ -486,16 +486,16 @@ VALUES (
     'https://demo.reachezy.in/avatars/meghnatravel.jpg',
     'Travel', 'Jaipur',
     '{
-        "energy_level": "high",
-        "aesthetic": "vibrant",
-        "setting": "outdoor",
-        "production_quality": "decent",
-        "content_type": "vlog",
+        "dominant_energy": "high",
+        "energy_score": 80,
+        "dominant_aesthetic": "vibrant",
+        "primary_content_type": "vlog",
+        "style_summary": "Meghna explores the hidden lanes of Jaipur'\''s old city: spice markets, step wells, and a rooftop chai with a panoramic Hawa Mahal view.",
         "consistency_score": 87,
-        "dominant_colors": ["#FF9800", "#2196F3", "#4CAF50"],
         "topics": ["travel", "rajasthan", "explore", "wanderlust", "india"],
-        "face_visible": true,
-        "has_text_overlay": true
+        "face_visible_pct": 100,
+        "text_overlay_pct": 100,
+        "settings": [{"name": "outdoor", "pct": 100}]
     }'::jsonb,
     29
 )
@@ -563,16 +563,16 @@ VALUES (
     'https://demo.reachezy.in/avatars/divyalifestyle.jpg',
     'Lifestyle', 'Pune',
     '{
-        "energy_level": "moderate",
-        "aesthetic": "minimal",
-        "setting": "indoor",
-        "production_quality": "decent",
-        "content_type": "lifestyle",
+        "dominant_energy": "moderate",
+        "energy_score": 55,
+        "dominant_aesthetic": "minimal",
+        "primary_content_type": "lifestyle",
+        "style_summary": "Divya reorganizes her Pune apartment living room with a minimal, earth-tone palette using only thrifted and handmade decor.",
         "consistency_score": 76,
-        "dominant_colors": ["#EFEBE9", "#795548", "#FFFFFF"],
         "topics": ["lifestyle", "minimal", "homeDecor", "aesthetic", "dailylife"],
-        "face_visible": true,
-        "has_text_overlay": false
+        "face_visible_pct": 100,
+        "text_overlay_pct": 0,
+        "settings": [{"name": "indoor", "pct": 100}]
     }'::jsonb,
     4
 )

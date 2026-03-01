@@ -134,15 +134,27 @@ def handler(event, context):
     text_count = sum(1 for a in analyses if a.get("has_text_overlay"))
     total = len(analyses)
 
+    # Compute energy_score: high/chaotic=80-90, medium/moderate=50-60, low/calm=20-30
+    dominant_energy = _mode([a["energy_level"] for a in analyses if a.get("energy_level")]) or "medium"
+    energy_map = {"high": 80, "chaotic": 90, "medium": 55, "moderate": 55, "low": 30, "calm": 25}
+    energy_score = energy_map.get(dominant_energy, 50)
+
+    # Compute settings breakdown
+    setting_counter = Counter([a["setting"] for a in analyses if a.get("setting")])
+    settings = [
+        {"name": name, "pct": round((count / total) * 100)}
+        for name, count in setting_counter.most_common()
+    ] if total > 0 else []
+
     style_profile = {
-        "dominant_energy": _mode([a["energy_level"] for a in analyses if a.get("energy_level")]),
+        "dominant_energy": dominant_energy,
+        "energy_score": energy_score,
         "dominant_aesthetic": _mode([a["aesthetic"] for a in analyses if a.get("aesthetic")]),
-        "dominant_setting": _mode([a["setting"] for a in analyses if a.get("setting")]),
-        "dominant_production": _mode([a["production_quality"] for a in analyses if a.get("production_quality")]),
-        "dominant_content_type": _mode([a["content_type"] for a in analyses if a.get("content_type")]),
-        "all_topics": all_topics,
-        "face_percentage": round((face_count / total) * 100, 1) if total > 0 else 0,
-        "text_overlay_percentage": round((text_count / total) * 100, 1) if total > 0 else 0,
+        "primary_content_type": _mode([a["content_type"] for a in analyses if a.get("content_type")]),
+        "topics": all_topics,
+        "face_visible_pct": round((face_count / total) * 100, 1) if total > 0 else 0,
+        "text_overlay_pct": round((text_count / total) * 100, 1) if total > 0 else 0,
+        "settings": settings,
         "style_summary": analyses[0].get("summary", ""),  # latest video summary (ordered DESC)
         "video_count": total,
         "consistency_score": _compute_consistency_score(analyses),

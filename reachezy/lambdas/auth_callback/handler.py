@@ -193,6 +193,47 @@ def _generate_session_token(creator_id, username, cognito_sub):
     return json.dumps(payload)
 
 
+def _handle_demo_login(username):
+    """Look up a demo creator by username and return a session token."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, cognito_sub, username, display_name, bio,
+               followers_count, media_count, profile_picture_url, instagram_id
+        FROM creators WHERE username = %s LIMIT 1
+        """,
+        (username,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return {
+            "statusCode": 404,
+            "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
+            "body": json.dumps({"error": f"Demo creator '{username}' not found"}),
+        }
+
+    creator_id, cognito_sub, uname, display_name, bio, followers, media_count, pic_url, ig_id = row
+    session_token = _generate_session_token(creator_id, uname, cognito_sub)
+
+    result = {
+        "creator_id": str(creator_id),
+        "instagram_id": ig_id,
+        "username": uname,
+        "display_name": display_name,
+        "bio": bio,
+        "followers_count": followers,
+        "media_count": media_count,
+        "profile_picture_url": pic_url,
+        "session_token": session_token,
+    }
+    return {
+        "statusCode": 200,
+        "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
+        "body": json.dumps(result),
+    }
+
+
 def handler(event, context):
     """Handle Facebook OAuth callback — exchange code for token, fetch Instagram profile."""
     try:
@@ -203,6 +244,12 @@ def handler(event, context):
             body = event
 
         print(f"Parsed body keys: {list(body.keys()) if isinstance(body, dict) else type(body)}")
+
+        # Demo mode: bypass Facebook OAuth entirely
+        if body.get("action") == "demo":
+            username = body.get("username", "priyabeauty")
+            print(f"Demo login for: {username}")
+            return _handle_demo_login(username)
 
         # Support both flows: code-based (new) and token-based (legacy)
         code = body.get("code")

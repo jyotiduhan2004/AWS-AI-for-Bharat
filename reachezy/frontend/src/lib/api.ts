@@ -23,6 +23,11 @@ export const api = {
   // Auth
   authCallback: (data: { code: string; redirect_uri: string }) =>
     fetchAPI('/auth/callback', { method: 'POST', body: JSON.stringify(data) }),
+  demoLogin: (username: string = 'priyabeauty') =>
+    fetchAPI('/auth/callback', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'demo', username }),
+    }),
 
   // Profile
   getProfile: () => fetchAPI('/creator/profile'),

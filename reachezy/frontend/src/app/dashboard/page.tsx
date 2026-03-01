@@ -54,7 +54,6 @@ export default function DashboardPage() {
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisReady, setAnalysisReady] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -70,8 +69,9 @@ export default function DashboardPage() {
 
       try {
         const mediaKit = await api.getMediaKit(profileData.username);
-        if (mediaKit?.style_profile) {
-          setStyleProfile(mediaKit.style_profile);
+        const sp = mediaKit?.creator?.style_profile || mediaKit?.style_profile;
+        if (sp) {
+          setStyleProfile(sp);
           setAnalysisReady(true);
         }
       } catch {
@@ -109,21 +109,10 @@ export default function DashboardPage() {
     }
   }, [analysisReady, loading, profile]);
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
     if (!profile) return;
-    setPdfLoading(true);
-    try {
-      const result = await api.generatePDF({
-        creator_id: profile.creator_id,
-      });
-      if (result.url) {
-        window.open(result.url, '_blank');
-      }
-    } catch {
-      alert('Failed to generate PDF. Please try again.');
-    } finally {
-      setPdfLoading(false);
-    }
+    // Open public media kit in new tab — user can Ctrl+P / Print to PDF
+    window.open(`/${profile.username}`, '_blank');
   };
 
   const handleLogout = () => {
@@ -274,17 +263,9 @@ export default function DashboardPage() {
               </Link>
               <button
                 onClick={handleDownloadPDF}
-                disabled={pdfLoading}
                 className="btn-primary flex-1 text-sm"
               >
-                {pdfLoading ? (
-                  <span className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Generating...
-                  </span>
-                ) : (
-                  'Download PDF'
-                )}
+                Download PDF
               </button>
             </div>
           </div>

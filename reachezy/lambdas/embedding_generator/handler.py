@@ -1,8 +1,9 @@
 import json
-import boto3
+import hashlib
+import math
 from shared.db import get_db_connection
 
-BEDROCK_EMBEDDING_MODEL = "amazon.titan-embed-text-v2:0"
+EMBEDDING_DIM = 1024
 
 
 def _build_embedding_text(analysis):
@@ -36,6 +37,35 @@ def _build_embedding_text(analysis):
     return ". ".join(parts)
 
 
+def _generate_hash_embedding(text, dim=EMBEDDING_DIM):
+    """Generate a deterministic embedding vector using chained SHA-512 hashes.
+
+    Produces a normalized vector of `dim` dimensions from the input text.
+    Same text always produces the same embedding. The vector is L2-normalized
+    so cosine similarity works correctly.
+    """
+    values = []
+    seed = text.encode("utf-8")
+    while len(values) < dim:
+        h = hashlib.sha512(seed).digest()
+        # Each SHA-512 hash gives 64 bytes = 16 floats (4 bytes each)
+        for j in range(0, 64, 4):
+            if len(values) >= dim:
+                break
+            # Convert 4 bytes to an unsigned int, then map to [-1, 1]
+            val = int.from_bytes(h[j:j + 4], "big")
+            values.append((val / 2147483648.0) - 1.0)  # map [0, 2^32) to [-1, 1)
+        # Chain: hash the previous hash to get more values
+        seed = h
+
+    # L2-normalize
+    norm = math.sqrt(sum(v * v for v in values))
+    if norm > 0:
+        values = [v / norm for v in values]
+
+    return values
+
+
 def handler(event, context):
     """Generate embedding for a video analysis and store in pgvector.
 
@@ -52,23 +82,8 @@ def handler(event, context):
     # Build embedding text from analysis
     embedding_text = _build_embedding_text(analysis)
 
-    # Call Bedrock Titan Embeddings v2
-    bedrock = boto3.client("bedrock-runtime")
-    request_body = json.dumps({
-        "inputText": embedding_text,
-        "dimensions": 1024,
-        "normalize": True,
-    })
-
-    response = bedrock.invoke_model(
-        modelId=BEDROCK_EMBEDDING_MODEL,
-        contentType="application/json",
-        accept="application/json",
-        body=request_body,
-    )
-
-    response_body = json.loads(response["body"].read())
-    embedding = response_body["embedding"]
+    # Generate deterministic hash-based embedding
+    embedding = _generate_hash_embedding(embedding_text)
 
     # Format embedding as pgvector-compatible string: "[0.1,0.2,...]"
     embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"

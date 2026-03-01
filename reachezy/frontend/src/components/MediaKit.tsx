@@ -68,21 +68,8 @@ export default function MediaKit({
 }: MediaKitProps) {
   const followerBucket = getFollowerBucket(creator.followers_count);
 
-  const handleDownloadPDF = async () => {
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-      const res = await fetch(`${API_URL}/creator/mediakit/pdf`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ creator_id: creator.username }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch {
-      alert('Failed to generate PDF. Please try again.');
-    }
+  const handleDownloadPDF = () => {
+    window.print();
   };
 
   return (

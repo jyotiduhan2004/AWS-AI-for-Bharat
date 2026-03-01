@@ -17,30 +17,30 @@ interface MediaKitData {
     media_count: number;
     niche: string;
     city: string;
-  };
-  rates: {
-    reel_rate: number;
-    story_rate: number;
-    post_rate: number;
-    accepts_barter: boolean;
+    style_profile?: {
+      dominant_energy: string;
+      energy_score: number;
+      dominant_aesthetic: string;
+      primary_content_type: string;
+      style_summary: string;
+      consistency_score: number;
+      topics: string[];
+      face_visible_pct: number;
+      text_overlay_pct: number;
+      settings: { name: string; pct: number }[];
+    } | null;
+    rate_card?: {
+      reel_rate: number;
+      story_rate: number;
+      post_rate: number;
+      accepts_barter: boolean;
+    } | null;
   };
   benchmarks: {
     niche_percentile: { reel: number; story: number; post: number };
     overall_percentile: { reel: number; story: number; post: number };
     source: string;
     sample_size?: number;
-  } | null;
-  style_profile: {
-    dominant_energy: string;
-    energy_score: number;
-    dominant_aesthetic: string;
-    primary_content_type: string;
-    style_summary: string;
-    consistency_score: number;
-    topics: string[];
-    face_visible_pct: number;
-    text_overlay_pct: number;
-    settings: { name: string; pct: number }[];
   } | null;
   videos: {
     id: string;
@@ -107,8 +107,8 @@ export default async function PublicMediaKitPage({ params }: PageProps) {
         videos={data.videos || []}
         benchmarks={data.benchmarks}
         thumbnailUrls={data.thumbnail_urls || []}
-        rates={data.rates}
-        styleProfile={data.style_profile}
+        rates={data.creator?.rate_card ?? undefined}
+        styleProfile={data.creator?.style_profile ?? undefined}
       />
     </div>
   );

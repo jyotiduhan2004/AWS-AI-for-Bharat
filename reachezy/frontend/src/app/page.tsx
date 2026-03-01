@@ -1,6 +1,9 @@
 'use client';
 
-import { getLoginUrl } from '@/lib/auth';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getLoginUrl, setToken } from '@/lib/auth';
+import { api } from '@/lib/api';
 
 const features = [
   {
@@ -59,8 +62,23 @@ const steps = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [demoLoading, setDemoLoading] = useState(false);
+
   const handleLogin = () => {
     window.location.href = getLoginUrl();
+  };
+
+  const handleDemo = async () => {
+    setDemoLoading(true);
+    try {
+      const data = await api.demoLogin('priyabeauty');
+      setToken(data.session_token);
+      router.push('/dashboard');
+    } catch (err) {
+      console.error('Demo login failed:', err);
+      setDemoLoading(false);
+    }
   };
 
   return (
@@ -110,9 +128,13 @@ export default function LandingPage() {
                 </svg>
                 Sign up with Instagram
               </button>
-              <span className="text-sm text-primary-200">
-                Free forever for creators
-              </span>
+              <button
+                onClick={handleDemo}
+                disabled={demoLoading}
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-white/30 px-8 py-4 text-base font-semibold text-white transition-all duration-200 hover:border-white/60 hover:bg-white/10 disabled:opacity-50"
+              >
+                {demoLoading ? 'Loading...' : 'Try Demo'}
+              </button>
             </div>
           </div>
         </div>

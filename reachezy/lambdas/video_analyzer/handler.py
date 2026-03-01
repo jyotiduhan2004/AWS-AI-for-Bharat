@@ -3,9 +3,11 @@ import json
 import base64
 import re
 import boto3
+import requests as http_requests
 from shared.db import get_db_connection
 
-BEDROCK_MODEL_ID = "us.amazon.nova-lite-v1:0"
+GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 ANALYSIS_PROMPT = """You are an expert content analyst for social media creators. Analyze these 4 frames extracted from a single video (taken at 0%, 25%, 50%, and 75% through the video).
 
@@ -49,7 +51,7 @@ def _clean_json_response(text):
 
 
 def handler(event, context):
-    """Analyze video frames using Claude 3.5 Sonnet via Bedrock.
+    """Analyze video frames using Google Gemini 2.0 Flash.
 
     Receives:
         { video_id, creator_id, frame_keys, duration_seconds }
@@ -63,57 +65,48 @@ def handler(event, context):
     duration_seconds = event.get("duration_seconds")
 
     frames_bucket = os.environ["FRAMES_BUCKET"]
+    gemini_api_key = os.environ["GEMINI_API_KEY"]
     s3 = boto3.client("s3")
-    bedrock = boto3.client("bedrock-runtime")
 
-    # Download and base64 encode all frames
-    image_content = []
+    # Build Gemini request parts: interleave text labels and images
+    parts = []
     for i, frame_key in enumerate(frame_keys):
         response = s3.get_object(Bucket=frames_bucket, Key=frame_key)
         frame_bytes = response["Body"].read()
         b64_data = base64.b64encode(frame_bytes).decode("utf-8")
 
-        image_content.append({
-            "type": "text",
-            "text": f"Frame {i + 1} (at {int(i * 25)}% of video):",
-        })
-        image_content.append({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": "image/jpeg",
+        parts.append({"text": f"Frame {i + 1} (at {int(i * 25)}% of video):"})
+        parts.append({
+            "inline_data": {
+                "mime_type": "image/jpeg",
                 "data": b64_data,
-            },
+            }
         })
 
     # Add the analysis prompt after all images
-    image_content.append({
-        "type": "text",
-        "text": ANALYSIS_PROMPT,
-    })
+    parts.append({"text": ANALYSIS_PROMPT})
 
-    # Call Bedrock with Amazon Nova Lite
-    request_body = json.dumps({
-        "messages": [
-            {
-                "role": "user",
-                "content": image_content,
-            }
-        ],
-        "inferenceConfig": {
-            "maxTokens": 1024,
+    # Call Gemini API
+    gemini_response = http_requests.post(
+        GEMINI_ENDPOINT,
+        params={"key": gemini_api_key},
+        headers={"Content-Type": "application/json"},
+        json={
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "maxOutputTokens": 1024,
+                "temperature": 0.1,
+            },
         },
-    })
-
-    bedrock_response = bedrock.invoke_model(
-        modelId=BEDROCK_MODEL_ID,
-        contentType="application/json",
-        accept="application/json",
-        body=request_body,
+        timeout=60,
     )
 
-    response_body = json.loads(bedrock_response["body"].read())
-    raw_text = response_body["output"]["message"]["content"][0]["text"]
+    if not gemini_response.ok:
+        print(f"Gemini API error: {gemini_response.status_code} {gemini_response.text[:500]}")
+        gemini_response.raise_for_status()
+
+    response_body = gemini_response.json()
+    raw_text = response_body["candidates"][0]["content"]["parts"][0]["text"]
 
     # Parse JSON response with retry/fallback
     cleaned_text = _clean_json_response(raw_text)
