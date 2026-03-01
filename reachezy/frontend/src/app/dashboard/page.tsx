@@ -4,21 +4,23 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { clearToken } from '@/lib/auth';
-import { formatINR, getFollowerBucket } from '@/lib/constants';
+import { clearToken, getUserRole } from '@/lib/auth';
+import { getFollowerBucket } from '@/lib/constants';
 import BenchmarkDisplay from '@/components/BenchmarkDisplay';
 import StyleDNA from '@/components/StyleDNA';
+import AppNavbar from '@/components/AppNavbar';
 
 interface Profile {
   creator_id: string;
   username: string;
-  full_name: string;
+  display_name: string;
   followers_count: number;
   media_count: number;
-  biography: string;
+  bio: string;
   profile_picture_url: string;
   niche: string;
   city: string;
+  style_profile: StyleProfile | null;
 }
 
 interface Rates {
@@ -54,11 +56,29 @@ export default function DashboardPage() {
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisReady, setAnalysisReady] = useState(false);
+  const [uploadsCount, setUploadsCount] = useState<number | null>(null);
+
+  // Redirect brands to their dashboard
+  useEffect(() => {
+    if (getUserRole() === 'brand') {
+      router.replace('/brand/dashboard');
+    }
+  }, [router]);
 
   const loadData = useCallback(async () => {
     try {
-      const profileData = await api.getProfile();
+      const [profileData, uploadsData] = await Promise.all([
+        api.getProfile(),
+        api.getUploadsCount().catch(() => ({ count: 0 })),
+      ]);
       setProfile(profileData);
+      setUploadsCount(uploadsData.count ?? 0);
+
+      // Use style_profile from local DB (already returned by /api/creator/profile)
+      if (profileData.style_profile) {
+        setStyleProfile(profileData.style_profile);
+        setAnalysisReady(true);
+      }
 
       try {
         const ratesData = await api.getRates(profileData.creator_id);
@@ -66,52 +86,19 @@ export default function DashboardPage() {
       } catch {
         /* rates not set yet */
       }
-
-      try {
-        const mediaKit = await api.getMediaKit(profileData.username);
-        const sp = mediaKit?.creator?.style_profile || mediaKit?.style_profile;
-        if (sp) {
-          setStyleProfile(sp);
-          setAnalysisReady(true);
-        }
-      } catch {
-        /* analysis not ready yet */
-      }
-    } catch {
-      router.replace('/');
+    } catch (err) {
+      console.error('Failed to load profile:', err);
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (!analysisReady && !loading) {
-      const interval = setInterval(async () => {
-        if (profile) {
-          try {
-            const mediaKit = await api.getMediaKit(profile.username);
-            if (mediaKit?.style_profile) {
-              setStyleProfile(mediaKit.style_profile);
-              setAnalysisReady(true);
-              clearInterval(interval);
-            }
-          } catch {
-            /* still processing */
-          }
-        }
-      }, 10000);
-
-      return () => clearInterval(interval);
-    }
-  }, [analysisReady, loading, profile]);
-
   const handleDownloadPDF = () => {
     if (!profile) return;
-    // Open public media kit in new tab — user can Ctrl+P / Print to PDF
     window.open(`/${profile.username}`, '_blank');
   };
 
@@ -128,36 +115,34 @@ export default function DashboardPage() {
     );
   }
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <p className="text-gray-600">Could not load your profile.</p>
+        <div className="flex gap-3">
+          <button onClick={() => loadData()} className="btn-primary text-sm">
+            Retry
+          </button>
+          <button onClick={handleLogout} className="btn-secondary text-sm">
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const followerBucket = getFollowerBucket(profile.followers_count);
 
   return (
     <div className="min-h-screen">
-      {/* Top Nav */}
-      <nav className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
-              <span className="text-sm font-bold text-white">R</span>
-            </div>
-            <span className="text-lg font-bold text-gray-900">ReachEzy</span>
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            Sign Out
-          </button>
-        </div>
-      </nav>
+      <AppNavbar />
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         {/* Profile Header */}
         <div className="card mb-8">
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-purple-500 text-2xl font-bold text-white">
-              {profile.full_name?.[0] || profile.username[0]}
+              {profile.display_name?.[0] || profile.username[0]}
             </div>
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -190,8 +175,27 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Analysis Pending Banner */}
-        {!analysisReady && (
+        {/* Three-state banner */}
+        {uploadsCount === 0 && !analysisReady && (
+          <div className="mb-8 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-6 py-4">
+            <svg className="h-6 w-6 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-medium text-blue-800">
+                Upload your videos to get started
+              </p>
+              <p className="text-sm text-blue-600">
+                We&apos;ll analyze your content style using AI and build your media kit.
+              </p>
+            </div>
+            <Link href="/upload" className="btn-primary shrink-0 text-sm">
+              Upload Videos
+            </Link>
+          </div>
+        )}
+
+        {uploadsCount !== null && uploadsCount > 0 && !analysisReady && (
           <div className="mb-8 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-6 py-4">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600" />
             <div>
@@ -222,7 +226,7 @@ export default function DashboardPage() {
             <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-purple-500 text-sm font-bold text-white">
-                  {profile.full_name?.[0] || profile.username[0]}
+                  {profile.display_name?.[0] || profile.username[0]}
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">
@@ -233,7 +237,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <div className="mt-3 grid grid-cols-2 gap-2 text-center">
                 <div className="rounded-md bg-white p-2">
                   <p className="text-lg font-bold text-gray-900">
                     {profile.followers_count >= 1000
@@ -241,10 +245,6 @@ export default function DashboardPage() {
                       : profile.followers_count}
                   </p>
                   <p className="text-xs text-gray-500">Followers</p>
-                </div>
-                <div className="rounded-md bg-white p-2">
-                  <p className="text-lg font-bold text-gray-900">&mdash;</p>
-                  <p className="text-xs text-gray-500">Eng. Rate</p>
                 </div>
                 <div className="rounded-md bg-white p-2">
                   <p className="text-lg font-bold text-gray-900">
@@ -298,7 +298,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Content Style Card */}
+          {/* Content Style Card — 3-state */}
           <div className="card">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">
               Content Style
@@ -307,20 +307,23 @@ export default function DashboardPage() {
               <StyleDNA styleProfile={styleProfile} />
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                {!analysisReady ? (
+                {uploadsCount === 0 ? (
+                  <>
+                    <svg className="mb-3 h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <p className="text-sm text-gray-500">
+                      Upload content to see your style analysis.
+                    </p>
+                    <Link href="/upload" className="mt-2 text-sm font-medium text-primary-600 hover:text-primary-700">
+                      Upload Videos &rarr;
+                    </Link>
+                  </>
+                ) : (
                   <>
                     <div className="mb-3 h-8 w-8 animate-spin rounded-full border-3 border-primary-200 border-t-primary-600" />
                     <p className="text-sm text-gray-500">
                       Style analysis in progress...
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <svg className="mb-3 h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
-                    <p className="text-sm text-gray-500">
-                      Upload content to see your style analysis.
                     </p>
                   </>
                 )}

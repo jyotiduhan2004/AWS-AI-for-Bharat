@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { api } from '@/lib/api';
 
 interface VideoUploaderProps {
@@ -18,10 +18,16 @@ interface FileItem {
 }
 
 const MAX_FILES = 5;
-const MIN_FILES = 3;
+const MIN_FILES = 1;
 const MAX_SIZE_MB = 100;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 const ALLOWED_TYPES = ['video/mp4', 'video/quicktime'];
+
+const DEMO_VIDEOS = [
+  { url: '/demo-videos/claude-bot-setup.mp4', name: 'claude-bot-setup.mp4' },
+  { url: '/demo-videos/india-ai-summit.mp4', name: 'india-ai-summit.mp4' },
+  { url: '/demo-videos/tcs-nqt-career.mp4', name: 'tcs-nqt-career.mp4' },
+];
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) {
@@ -38,7 +44,11 @@ export default function VideoUploader({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Ref to always access latest files (avoids stale closure in upload loop)
+  const filesRef = useRef<FileItem[]>(files);
+  useEffect(() => { filesRef.current = files; }, [files]);
 
   const validateFiles = useCallback(
     (newFiles: File[]): { valid: File[]; errors: string[] } => {
@@ -93,6 +103,26 @@ export default function VideoUploader({
     },
     [validateFiles]
   );
+
+  const loadDemoVideos = async () => {
+    setIsLoadingDemo(true);
+    setError(null);
+    try {
+      const demoFiles = await Promise.all(
+        DEMO_VIDEOS.map(async (demo) => {
+          const response = await fetch(demo.url);
+          if (!response.ok) throw new Error(`Failed to fetch ${demo.name}`);
+          const blob = await response.blob();
+          return new File([blob], demo.name, { type: 'video/mp4' });
+        })
+      );
+      addFiles(demoFiles);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load demo videos');
+    } finally {
+      setIsLoadingDemo(false);
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -192,7 +222,8 @@ export default function VideoUploader({
   };
 
   const handleUpload = async () => {
-    if (files.length < MIN_FILES) {
+    const currentFiles = filesRef.current;
+    if (currentFiles.length < MIN_FILES) {
       setError(`Please add at least ${MIN_FILES} files.`);
       return;
     }
@@ -201,9 +232,11 @@ export default function VideoUploader({
     setError(null);
 
     let allSuccess = true;
-    for (let i = 0; i < files.length; i++) {
-      if (files[i].status === 'done') continue;
-      const success = await uploadFile(files[i], i);
+    for (let i = 0; i < currentFiles.length; i++) {
+      // Read latest status from ref to avoid stale closure
+      const latestFiles = filesRef.current;
+      if (latestFiles[i]?.status === 'done') continue;
+      const success = await uploadFile(latestFiles[i], i);
       if (!success) allSuccess = false;
     }
 
@@ -264,6 +297,46 @@ export default function VideoUploader({
           MP4 or MOV, max {MAX_SIZE_MB}MB per file, {MIN_FILES}-{MAX_FILES} files
         </p>
       </div>
+
+      {/* Demo Videos */}
+      {files.length === 0 && (
+        <div className="flex items-center gap-4">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+      )}
+      {files.length === 0 && (
+        <button
+          onClick={loadDemoVideos}
+          disabled={isLoadingDemo}
+          className="btn-secondary w-full"
+        >
+          {isLoadingDemo ? (
+            <span className="flex items-center justify-center gap-2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400/30 border-t-gray-600" />
+              Loading demo videos...
+            </span>
+          ) : (
+            <>
+              <svg
+                className="mr-2 h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
+                />
+              </svg>
+              Load 3 Demo Videos
+            </>
+          )}
+        </button>
+      )}
 
       {/* File List */}
       {files.length > 0 && (

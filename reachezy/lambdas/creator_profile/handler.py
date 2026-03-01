@@ -22,8 +22,17 @@ def _get_cognito_sub(event):
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
             payload = json.loads(token)
+            # Support new token format (user_auth) with cognito_sub
             if payload.get("cognito_sub"):
                 return payload["cognito_sub"]
+            # Support new email-signup tokens that have user_id + creator_id
+            if payload.get("creator_id") and payload.get("role") == "creator":
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute("SELECT cognito_sub FROM creators WHERE id = %s", (payload["creator_id"],))
+                row = cur.fetchone()
+                if row:
+                    return row[0]
     except (json.JSONDecodeError, TypeError, KeyError):
         pass
 

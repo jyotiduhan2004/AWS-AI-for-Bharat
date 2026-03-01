@@ -76,7 +76,7 @@ export default function UploadPage() {
             Upload Your Best Content
           </h1>
           <p className="mt-2 text-gray-600">
-            Select 3-5 of your best Instagram Reels (MP4/MOV, max 60s, max 100MB)
+            Select 1-5 of your best Instagram Reels (MP4/MOV, max 60s, max 100MB)
           </p>
         </div>
 

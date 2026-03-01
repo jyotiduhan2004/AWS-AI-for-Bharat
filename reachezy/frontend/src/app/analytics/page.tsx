@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import StyleDNA from '@/components/StyleDNA';
 import TopicCloud from '@/components/TopicCloud';
+import AppNavbar from '@/components/AppNavbar';
 import {
   BarChart,
   Bar,
@@ -104,23 +105,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Nav */}
-      <nav className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
-              <span className="text-sm font-bold text-white">R</span>
-            </div>
-            <span className="text-lg font-bold text-gray-900">ReachEzy</span>
-          </Link>
-          <Link
-            href="/dashboard"
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            &larr; Dashboard
-          </Link>
-        </div>
-      </nav>
+      <AppNavbar />
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="mb-8">

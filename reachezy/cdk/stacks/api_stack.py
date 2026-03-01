@@ -61,6 +61,10 @@ class ApiStack(cdk.Stack):
             description="psycopg2-binary, requests, and shared modules for ReachEzy Lambdas",
         )
 
+        # AI provider config: "bedrock" (default) or "groq" (testing fallback)
+        ai_provider = self.node.try_get_context("ai_provider") or "bedrock"
+        groq_api_key = self.node.try_get_context("groq_api_key") or ""
+
         # Common environment variables shared by most Lambdas
         db_env = {
             "DB_HOST": db_instance.db_instance_endpoint_address,
@@ -187,6 +191,64 @@ class ApiStack(cdk.Stack):
         db_secret.grant_read(mediakit_pdf_fn)
         mediakits_bucket.grant_read_write(mediakit_pdf_fn)
 
+        # ----- 7. user_auth — POST /auth/user -----
+        user_auth_fn = _lambda.Function(
+            self,
+            "UserAuthFn",
+            function_name="reachezy-user-auth",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="handler.handler",
+            code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "user_auth")),
+            layers=[shared_layer],
+            memory_size=256,
+            timeout=cdk.Duration.seconds(10),
+            environment={**db_env},
+        )
+        db_secret.grant_read(user_auth_fn)
+
+        # ----- 8. brand_search — POST /brand/search (Amazon Bedrock-powered) -----
+        brand_search_fn = _lambda.Function(
+            self,
+            "BrandSearchFn",
+            function_name="reachezy-brand-search",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="handler.handler",
+            code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "brand_search")),
+            layers=[shared_layer],
+            memory_size=512,
+            timeout=cdk.Duration.seconds(30),
+            environment={
+                **db_env,
+                "BEDROCK_REGION": "us-east-1",
+                "AI_PROVIDER": ai_provider,
+                "GROQ_API_KEY": groq_api_key,
+            },
+        )
+        db_secret.grant_read(brand_search_fn)
+        # Grant Bedrock InvokeModel permission for Nova Lite query parsing
+        brand_search_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["bedrock:InvokeModel", "bedrock:ApplyGuardrail"],
+                resources=["*"],
+            )
+        )
+
+        # ----- 9. brand_wishlist — GET/POST/DELETE /brand/wishlist -----
+        brand_wishlist_fn = _lambda.Function(
+            self,
+            "BrandWishlistFn",
+            function_name="reachezy-brand-wishlist",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="handler.handler",
+            code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "brand_wishlist")),
+            layers=[shared_layer],
+            memory_size=256,
+            timeout=cdk.Duration.seconds(10),
+            environment={**db_env},
+        )
+        db_secret.grant_read(brand_wishlist_fn)
+
         # =====================================================================
         # API Gateway
         # =====================================================================
@@ -286,6 +348,41 @@ class ApiStack(cdk.Stack):
             apigw.LambdaIntegration(mediakit_pdf_fn),
             authorizer=cognito_authorizer,
             authorization_type=apigw.AuthorizationType.COGNITO,
+        )
+
+        # POST /auth/user (no auth — handles signup/login internally)
+        auth_user_resource = auth_resource.add_resource("user")
+        auth_user_resource.add_method(
+            "POST",
+            apigw.LambdaIntegration(user_auth_fn),
+            authorization_type=apigw.AuthorizationType.NONE,
+        )
+
+        # POST /brand/search (no API GW auth — custom token validation inside handler)
+        brand_resource = self._api.root.add_resource("brand")
+        brand_search_resource = brand_resource.add_resource("search")
+        brand_search_resource.add_method(
+            "POST",
+            apigw.LambdaIntegration(brand_search_fn),
+            authorization_type=apigw.AuthorizationType.NONE,
+        )
+
+        # GET/POST/DELETE /brand/wishlist (no API GW auth — custom token validation)
+        brand_wishlist_resource = brand_resource.add_resource("wishlist")
+        brand_wishlist_resource.add_method(
+            "GET",
+            apigw.LambdaIntegration(brand_wishlist_fn),
+            authorization_type=apigw.AuthorizationType.NONE,
+        )
+        brand_wishlist_resource.add_method(
+            "POST",
+            apigw.LambdaIntegration(brand_wishlist_fn),
+            authorization_type=apigw.AuthorizationType.NONE,
+        )
+        brand_wishlist_resource.add_method(
+            "DELETE",
+            apigw.LambdaIntegration(brand_wishlist_fn),
+            authorization_type=apigw.AuthorizationType.NONE,
         )
 
         # ---------- CloudFormation Outputs ----------

@@ -32,3 +32,18 @@ export function formatINR(amount: number): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+export const INDUSTRIES = [
+  'Beauty & Wellness',
+  'Fashion & Apparel',
+  'Electronics & Tech',
+  'Food & Beverage',
+  'Health & Fitness',
+  'Travel & Hospitality',
+  'Education & EdTech',
+  'Entertainment & Media',
+  'Finance & Fintech',
+  'E-commerce & Retail',
+  'Gaming',
+  'Automotive',
+] as const;

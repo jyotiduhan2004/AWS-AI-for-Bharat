@@ -113,7 +113,7 @@ export default function MediaKit({
       </div>
 
       {/* Stats Row */}
-      <div className="mb-8 grid grid-cols-3 gap-4">
+      <div className="mb-8 grid grid-cols-2 gap-4">
         <div className="card text-center">
           <p className="text-2xl font-bold text-gray-900">
             {creator.followers_count >= 1000
@@ -121,10 +121,6 @@ export default function MediaKit({
               : creator.followers_count}
           </p>
           <p className="mt-0.5 text-xs text-gray-500">Followers</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-gray-900">&mdash;</p>
-          <p className="mt-0.5 text-xs text-gray-500">Engagement</p>
         </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-gray-900">

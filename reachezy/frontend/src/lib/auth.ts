@@ -31,3 +31,40 @@ export function clearToken() {
 export function isLoggedIn(): boolean {
   return !!getToken();
 }
+
+// ---- New: role-aware session helpers ----
+
+interface UserSession {
+  user_id?: string;
+  creator_id?: string;
+  role?: 'creator' | 'brand';
+  cognito_sub?: string;
+  username?: string;
+  iat?: number;
+  exp?: number;
+}
+
+export function getUserSession(): UserSession | null {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    return JSON.parse(token) as UserSession;
+  } catch {
+    return null;
+  }
+}
+
+export function getUserRole(): 'creator' | 'brand' | null {
+  const session = getUserSession();
+  return session?.role || null;
+}
+
+export function isBrand(): boolean {
+  return getUserRole() === 'brand';
+}
+
+export function isCreator(): boolean {
+  const role = getUserRole();
+  // If no role field (legacy token from demo/FB login), treat as creator
+  return role === 'creator' || role === null;
+}

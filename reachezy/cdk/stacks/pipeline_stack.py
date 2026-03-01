@@ -13,6 +13,10 @@ import aws_cdk.aws_events as events
 import aws_cdk.aws_events_targets as events_targets
 import aws_cdk.aws_iam as iam
 import aws_cdk.aws_secretsmanager as secretsmanager
+import aws_cdk.aws_bedrock as bedrock
+import aws_cdk.aws_cloudwatch as cloudwatch
+import aws_cdk.aws_cloudwatch_actions as cw_actions
+import aws_cdk.aws_sns as sns
 
 
 class PipelineStack(cdk.Stack):
@@ -41,6 +45,52 @@ class PipelineStack(cdk.Stack):
         lambdas_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "lambdas")
         layers_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "layers")
 
+        # =====================================================================
+        # Bedrock Guardrail — Responsible AI content filtering
+        # =====================================================================
+        guardrail = bedrock.CfnGuardrail(
+            self,
+            "ContentSafetyGuardrail",
+            name="reachezy-content-safety",
+            description="Filters violent, hateful, sexual, and harmful content from video analysis",
+            blocked_input_messaging="This content has been blocked by our content safety policy.",
+            blocked_outputs_messaging="The generated output has been blocked by our content safety policy.",
+            content_policy_config=bedrock.CfnGuardrail.ContentPolicyConfigProperty(
+                filters_config=[
+                    bedrock.CfnGuardrail.ContentFilterConfigProperty(
+                        type="SEXUAL",
+                        input_strength="HIGH",
+                        output_strength="HIGH",
+                    ),
+                    bedrock.CfnGuardrail.ContentFilterConfigProperty(
+                        type="VIOLENCE",
+                        input_strength="HIGH",
+                        output_strength="HIGH",
+                    ),
+                    bedrock.CfnGuardrail.ContentFilterConfigProperty(
+                        type="HATE",
+                        input_strength="HIGH",
+                        output_strength="HIGH",
+                    ),
+                    bedrock.CfnGuardrail.ContentFilterConfigProperty(
+                        type="INSULTS",
+                        input_strength="HIGH",
+                        output_strength="HIGH",
+                    ),
+                    bedrock.CfnGuardrail.ContentFilterConfigProperty(
+                        type="MISCONDUCT",
+                        input_strength="HIGH",
+                        output_strength="HIGH",
+                    ),
+                    bedrock.CfnGuardrail.ContentFilterConfigProperty(
+                        type="PROMPT_ATTACK",
+                        input_strength="HIGH",
+                        output_strength="NONE",
+                    ),
+                ],
+            ),
+        )
+
         # ----- Shared dependencies Lambda Layer -----
         shared_layer = _lambda.LayerVersion(
             self,
@@ -51,12 +101,20 @@ class PipelineStack(cdk.Stack):
             description="psycopg2-binary, requests, and shared modules for pipeline Lambdas",
         )
 
+        # AI provider config: "bedrock" (default) or "groq" (testing fallback)
+        ai_provider = self.node.try_get_context("ai_provider") or "bedrock"
+        groq_api_key = self.node.try_get_context("groq_api_key") or ""
+
         # Common environment variables
         base_env = {
             "DB_HOST": db_instance.db_instance_endpoint_address,
             "DB_NAME": "reachezy",
             "DB_SECRET_ARN": db_secret.secret_arn,
             "FRAMES_BUCKET": frames_bucket.bucket_name,
+            "GUARDRAIL_ID": guardrail.attr_guardrail_id,
+            "GUARDRAIL_VERSION": "DRAFT",
+            "AI_PROVIDER": ai_provider,
+            "GROQ_API_KEY": groq_api_key,
         }
 
         # NOTE: Lambdas run outside VPC for hackathon.
@@ -67,10 +125,6 @@ class PipelineStack(cdk.Stack):
         # =====================================================================
 
         # ----- 1. Frame Extractor -----
-        # NOTE: Attach an FFmpeg Lambda layer ARN after deployment.
-        # You can use a public layer such as:
-        #   arn:aws:lambda:us-east-1:175033217214:layer:ffmpeg:1
-        # Add it via the console or by uncommenting the layers= parameter below.
         frame_extractor_fn = _lambda.Function(
             self,
             "FrameExtractorFn",
@@ -81,22 +135,17 @@ class PipelineStack(cdk.Stack):
             layers=[shared_layer],
             memory_size=512,
             timeout=cdk.Duration.seconds(120),
+            tracing=_lambda.Tracing.ACTIVE,
             environment={
                 **base_env,
                 "VIDEOS_BUCKET": videos_bucket.bucket_name,
             },
-            # layers=[
-            #     _lambda.LayerVersion.from_layer_version_arn(
-            #         self, "FfmpegLayer",
-            #         "arn:aws:lambda:us-east-1:ACCOUNT:layer:ffmpeg:VERSION"
-            #     )
-            # ],
         )
         db_secret.grant_read(frame_extractor_fn)
         videos_bucket.grant_read(frame_extractor_fn)
         frames_bucket.grant_read_write(frame_extractor_fn)
 
-        # ----- 2. Video Analyzer (Claude via Bedrock) -----
+        # ----- 2. Video Analyzer (Amazon Nova Lite via Bedrock + Guardrails) -----
         video_analyzer_fn = _lambda.Function(
             self,
             "VideoAnalyzerFn",
@@ -106,7 +155,8 @@ class PipelineStack(cdk.Stack):
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "video_analyzer")),
             layers=[shared_layer],
             memory_size=1024,
-            timeout=cdk.Duration.seconds(180),  # Claude calls can be slow
+            timeout=cdk.Duration.seconds(180),
+            tracing=_lambda.Tracing.ACTIVE,
             environment={
                 **base_env,
                 "BEDROCK_REGION": "us-east-1",
@@ -119,11 +169,19 @@ class PipelineStack(cdk.Stack):
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-                resources=["*"],  # Bedrock model ARNs vary; scope down if needed
+                resources=["*"],
+            )
+        )
+        # Grant Bedrock Guardrail permission
+        video_analyzer_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["bedrock:ApplyGuardrail"],
+                resources=[guardrail.attr_guardrail_arn],
             )
         )
 
-        # ----- 3. Embedding Generator (Bedrock Titan Embeddings) -----
+        # ----- 3. Embedding Generator (Amazon Titan Text Embeddings V2 via Bedrock) -----
         embedding_generator_fn = _lambda.Function(
             self,
             "EmbeddingGeneratorFn",
@@ -134,6 +192,7 @@ class PipelineStack(cdk.Stack):
             layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(60),
+            tracing=_lambda.Tracing.ACTIVE,
             environment={
                 **base_env,
                 "BEDROCK_REGION": "us-east-1",
@@ -160,6 +219,7 @@ class PipelineStack(cdk.Stack):
             layers=[shared_layer],
             memory_size=256,
             timeout=cdk.Duration.seconds(60),
+            tracing=_lambda.Tracing.ACTIVE,
             environment={**base_env},
         )
         db_secret.grant_read(profile_aggregator_fn)
@@ -186,7 +246,7 @@ class PipelineStack(cdk.Stack):
         )
         extract_task.add_retry(**retry_config)
 
-        # Step 2 — Analyze video frames with Claude (Bedrock)
+        # Step 2 — Analyze video frames with Amazon Nova Lite (Bedrock + Guardrails)
         analyze_task = sfn_tasks.LambdaInvoke(
             self,
             "AnalyzeVideo",
@@ -196,7 +256,7 @@ class PipelineStack(cdk.Stack):
         )
         analyze_task.add_retry(**retry_config)
 
-        # Step 3 — Generate embeddings for content tags / search
+        # Step 3 — Generate embeddings with Amazon Titan Embeddings V2 (Bedrock)
         embed_task = sfn_tasks.LambdaInvoke(
             self,
             "GenerateEmbeddings",
@@ -231,9 +291,6 @@ class PipelineStack(cdk.Stack):
         # =====================================================================
         # EventBridge Rule: S3 Object Created -> Step Functions
         # =====================================================================
-        # The videos bucket has event_bridge_enabled=True so S3 events go to
-        # the default EventBridge bus automatically.
-
         rule = events.Rule(
             self,
             "VideoUploadRule",
@@ -248,7 +305,6 @@ class PipelineStack(cdk.Stack):
             ),
         )
 
-        # Input transformer: extract creator_id and video key from S3 event
         rule.add_target(
             events_targets.SfnStateMachine(
                 self._state_machine,
@@ -264,9 +320,106 @@ class PipelineStack(cdk.Stack):
             )
         )
 
+        # =====================================================================
+        # CloudWatch Dashboard — Pipeline Observability
+        # =====================================================================
+        dashboard = cloudwatch.Dashboard(
+            self,
+            "PipelineDashboard",
+            dashboard_name="reachezy-pipeline-dashboard",
+        )
+
+        # Widget 1: Step Functions execution success/failure count
+        dashboard.add_widgets(
+            cloudwatch.GraphWidget(
+                title="Step Functions Executions",
+                width=24,
+                left=[
+                    self._state_machine.metric_succeeded(
+                        statistic="Sum", period=cdk.Duration.minutes(5)
+                    ),
+                    self._state_machine.metric_failed(
+                        statistic="Sum", period=cdk.Duration.minutes(5)
+                    ),
+                    self._state_machine.metric_started(
+                        statistic="Sum", period=cdk.Duration.minutes(5)
+                    ),
+                ],
+            )
+        )
+
+        # Widget 2: Lambda duration and errors by function
+        lambda_fns = [
+            ("FrameExtractor", frame_extractor_fn),
+            ("VideoAnalyzer", video_analyzer_fn),
+            ("EmbeddingGenerator", embedding_generator_fn),
+            ("ProfileAggregator", profile_aggregator_fn),
+        ]
+        dashboard.add_widgets(
+            cloudwatch.GraphWidget(
+                title="Lambda Duration (ms)",
+                width=12,
+                left=[
+                    fn.metric_duration(statistic="Average", period=cdk.Duration.minutes(5))
+                    for label, fn in lambda_fns
+                ],
+            ),
+            cloudwatch.GraphWidget(
+                title="Lambda Errors",
+                width=12,
+                left=[
+                    fn.metric_errors(statistic="Sum", period=cdk.Duration.minutes(5))
+                    for label, fn in lambda_fns
+                ],
+            ),
+        )
+
+        # Widget 3: Lambda invocations overview
+        dashboard.add_widgets(
+            cloudwatch.GraphWidget(
+                title="Lambda Invocations",
+                width=24,
+                left=[
+                    fn.metric_invocations(statistic="Sum", period=cdk.Duration.minutes(5))
+                    for label, fn in lambda_fns
+                ],
+            )
+        )
+
+        # =====================================================================
+        # CloudWatch Alarm — Alert on Step Functions execution failure
+        # =====================================================================
+        alarm_topic = sns.Topic(
+            self,
+            "PipelineAlarmTopic",
+            topic_name="reachezy-pipeline-alarms",
+            display_name="ReachEzy Pipeline Failure Alerts",
+        )
+
+        sfn_failure_alarm = cloudwatch.Alarm(
+            self,
+            "SfnFailureAlarm",
+            alarm_name="reachezy-sfn-execution-failure",
+            alarm_description="Alarm when Step Functions video analysis pipeline execution fails",
+            metric=self._state_machine.metric_failed(
+                statistic="Sum", period=cdk.Duration.minutes(5)
+            ),
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        sfn_failure_alarm.add_alarm_action(cw_actions.SnsAction(alarm_topic))
+
         # ---------- CloudFormation Outputs ----------
         cdk.CfnOutput(
             self, "StateMachineArn", value=self._state_machine.state_machine_arn
+        )
+        cdk.CfnOutput(
+            self, "GuardrailId", value=guardrail.attr_guardrail_id
+        )
+        cdk.CfnOutput(
+            self, "DashboardName", value=dashboard.dashboard_name
         )
 
     # ---------- Exported properties ----------
