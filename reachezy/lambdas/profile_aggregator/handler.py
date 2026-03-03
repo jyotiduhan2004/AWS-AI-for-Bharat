@@ -69,6 +69,32 @@ def _average_embeddings(embeddings):
     return _normalize_vector(avg)
 
 
+def _build_composite_summary(analyses, dominant_energy, dominant_aesthetic,
+                              primary_content_type, all_topics):
+    """Build a creator-level summary reflecting all analyzed videos."""
+    total = len(analyses)
+
+    # Always build a creator-level summary (even for 1 video)
+    parts = []
+    if primary_content_type:
+        parts.append(primary_content_type)
+    if dominant_aesthetic:
+        parts.append(dominant_aesthetic)
+    if dominant_energy:
+        parts.append(dominant_energy)
+
+    style_desc = ", ".join(parts) if parts else "mixed-style"
+    topic_str = ", ".join(all_topics[:5]) if all_topics else "various subjects"
+
+    if total == 1:
+        return f"Creator produces {style_desc} content focused on {topic_str}."
+
+    return (
+        f"Across {total} videos: Creator produces {style_desc} content "
+        f"focused on {topic_str}."
+    )
+
+
 def handler(event, context):
     """Aggregate style profile and embeddings for a creator.
 
@@ -155,7 +181,10 @@ def handler(event, context):
         "face_visible_pct": round((face_count / total) * 100, 1) if total > 0 else 0,
         "text_overlay_pct": round((text_count / total) * 100, 1) if total > 0 else 0,
         "settings": settings,
-        "style_summary": analyses[0].get("summary", ""),  # latest video summary (ordered DESC)
+        "style_summary": _build_composite_summary(analyses, dominant_energy,
+            _mode([a["aesthetic"] for a in analyses if a.get("aesthetic")]),
+            _mode([a["content_type"] for a in analyses if a.get("content_type")]),
+            all_topics),
         "video_count": total,
         "consistency_score": _compute_consistency_score(analyses),
     }

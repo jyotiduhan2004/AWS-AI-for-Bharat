@@ -36,8 +36,8 @@ interface Creator {
   rates: Rates | null;
 }
 
-const ENERGIES = ['high', 'medium', 'low'] as const;
-const AESTHETICS = ['minimal', 'vibrant', 'dark/moody', 'pastel', 'natural', 'luxury'] as const;
+const ENERGIES = ['high', 'moderate', 'calm', 'chaotic', 'intense'] as const;
+const AESTHETICS = ['minimal', 'vibrant', 'dark', 'pastel', 'natural', 'luxury', 'corporate', 'streetwear'] as const;
 const PRICE_TIERS = [
   { label: '\u20B9', maxAvg: 3000 },
   { label: '\u20B9\u20B9', maxAvg: 8000 },
@@ -57,12 +57,23 @@ function getPriceTierIndex(rates: Rates): number {
   return 3;
 }
 
+interface ParsedQuery {
+  niche?: string | null;
+  city?: string | null;
+  keywords?: string[];
+  energy?: string | null;
+  aesthetic?: string | null;
+  topics?: string[];
+}
+
 export default function InfluencerSearchPage() {
   const router = useRouter();
   const [allCreators, setAllCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [parsedQuery, setParsedQuery] = useState<ParsedQuery | null>(null);
+  const [searchSource, setSearchSource] = useState<string | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,6 +128,8 @@ export default function InfluencerSearchPage() {
   const handleSearch = async () => {
     const q = searchQuery.trim();
     if (!q) {
+      setParsedQuery(null);
+      setSearchSource(null);
       loadData();
       return;
     }
@@ -124,6 +137,8 @@ export default function InfluencerSearchPage() {
     try {
       const data = await api.searchCreators(q);
       setAllCreators(data.results || []);
+      setParsedQuery(data.parsed || null);
+      setSearchSource(data.source || null);
     } catch {
       // ignore
     } finally {
@@ -153,12 +168,12 @@ export default function InfluencerSearchPage() {
     }
     if (energyFilter) {
       list = list.filter(
-        (c) => c.style_profile?.dominant_energy === energyFilter
+        (c) => c.style_profile?.dominant_energy?.toLowerCase().includes(energyFilter.toLowerCase())
       );
     }
     if (aestheticFilter) {
       list = list.filter(
-        (c) => c.style_profile?.dominant_aesthetic === aestheticFilter
+        (c) => c.style_profile?.dominant_aesthetic?.toLowerCase().includes(aestheticFilter.toLowerCase())
       );
     }
     if (priceTierFilter !== null) {
@@ -221,6 +236,27 @@ export default function InfluencerSearchPage() {
     }
   };
 
+  const hasActiveFilters = !!(
+    searchQuery || nicheFilter || cityFilter || followerFilter ||
+    energyFilter || aestheticFilter || priceTierFilter !== null ||
+    barterOnly || sortBy !== 'followers_desc'
+  );
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setNicheFilter(null);
+    setCityFilter('');
+    setFollowerFilter(null);
+    setEnergyFilter(null);
+    setAestheticFilter(null);
+    setPriceTierFilter(null);
+    setBarterOnly(false);
+    setSortBy('followers_desc');
+    setParsedQuery(null);
+    setSearchSource(null);
+    loadData();
+  };
+
   const pillClass = (active: boolean) =>
     `rounded-full px-2.5 py-1 text-xs transition-colors cursor-pointer ${
       active
@@ -236,7 +272,9 @@ export default function InfluencerSearchPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Find Creators</h1>
           <p className="mt-1 text-gray-600">
-            Discover influencers that match your brand
+            {isBrandUser
+              ? 'Discover influencers that match your brand'
+              : 'Find creators to collaborate with'}
           </p>
         </div>
 
@@ -270,6 +308,19 @@ export default function InfluencerSearchPage() {
                   </button>
                 </form>
               </div>
+
+              {/* Clear All Filters */}
+              {hasActiveFilters && (
+                <button
+                  onClick={clearAllFilters}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear All Filters
+                </button>
+              )}
 
               {/* Niche */}
               <div>
@@ -457,6 +508,47 @@ export default function InfluencerSearchPage() {
               </div>
             ) : (
               <>
+                {/* Parsed query display */}
+                {parsedQuery && (parsedQuery.niche || parsedQuery.city || parsedQuery.energy || parsedQuery.aesthetic || (parsedQuery.topics && parsedQuery.topics.length > 0)) && (
+                  <div className="mb-4 rounded-lg border border-primary-200 bg-primary-50 px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <svg className="h-4 w-4 text-primary-600 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                      </svg>
+                      <span className="font-medium text-primary-700">
+                        {searchSource === 'ai' ? 'AI Parsed' : 'Parsed'}:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {parsedQuery.niche && (
+                          <span className="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700">
+                            Niche: {parsedQuery.niche}
+                          </span>
+                        )}
+                        {parsedQuery.city && (
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                            City: {parsedQuery.city}
+                          </span>
+                        )}
+                        {parsedQuery.energy && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            Energy: {parsedQuery.energy}
+                          </span>
+                        )}
+                        {parsedQuery.aesthetic && (
+                          <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                            Aesthetic: {parsedQuery.aesthetic}
+                          </span>
+                        )}
+                        {parsedQuery.topics && parsedQuery.topics.length > 0 && parsedQuery.topics.map((t: string) => (
+                          <span key={t} className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <p className="mb-4 text-sm text-gray-500">
                   {filtered.length} creator{filtered.length !== 1 ? 's' : ''} found
                 </p>
@@ -464,10 +556,33 @@ export default function InfluencerSearchPage() {
                 {filtered.length === 0 ? (
                   <div className="py-16 text-center">
                     <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                     </svg>
-                    <p className="mt-4 text-gray-500">No creators match your filters</p>
-                    <p className="text-sm text-gray-400">Try adjusting your criteria</p>
+                    <h3 className="mt-4 text-lg font-medium text-gray-700">No creators found</h3>
+                    <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
+                      Try a different search or adjust your filters. Here are some suggestions:
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      {['beauty creators in delhi', 'tech creators in bangalore', 'food bloggers in mumbai', 'fitness creators'].map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          onClick={async () => {
+                            setSearchQuery(suggestion);
+                            setLoading(true);
+                            try {
+                              const data = await api.searchCreators(suggestion);
+                              setAllCreators(data.results || []);
+                              setParsedQuery(data.parsed || null);
+                              setSearchSource(data.source || null);
+                            } catch { /* ignore */ }
+                            finally { setLoading(false); setPage(1); }
+                          }}
+                          className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <>

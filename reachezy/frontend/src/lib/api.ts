@@ -138,6 +138,14 @@ export const api = {
   // Upload count — check if creator has uploaded videos
   getUploadsCount: () => fetchLocal('/creator/uploads-count'),
 
+  // Per-video analyses — individual video breakdowns
+  getVideoAnalyses: () => fetchLocal('/creator/video-analyses'),
+  deleteVideoAnalysis: (videoId: string) =>
+    fetchLocal('/creator/video-analyses', {
+      method: 'DELETE',
+      body: JSON.stringify({ video_id: videoId }),
+    }),
+
   // Brand search — switched to local
   getAllCreators: () => fetchLocal('/brand/search'),
   searchCreators: (query: string) =>

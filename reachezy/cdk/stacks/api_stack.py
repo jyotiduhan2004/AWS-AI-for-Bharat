@@ -64,6 +64,8 @@ class ApiStack(cdk.Stack):
         # AI provider config: "bedrock" (default) or "groq" (testing fallback)
         ai_provider = self.node.try_get_context("ai_provider") or "bedrock"
         groq_api_key = self.node.try_get_context("groq_api_key") or ""
+        bedrock_model_id = self.node.try_get_context("bedrock_model_id") or "us.amazon.nova-2-lite-v1:0"
+        bedrock_role_arn = self.node.try_get_context("bedrock_role_arn") or ""
 
         # Common environment variables shared by most Lambdas
         db_env = {
@@ -170,9 +172,17 @@ class ApiStack(cdk.Stack):
         frames_bucket.grant_read(mediakit_data_fn)
 
         # ----- 6. mediakit_pdf — POST /creator/mediakit/pdf -----
-        # NOTE: This Lambda needs a WeasyPrint layer for PDF generation.
-        # Attach the layer ARN manually after deployment or via a context variable:
-        #   cdk deploy -c weasyprint_layer_arn=arn:aws:lambda:us-east-1:...
+        # WeasyPrint layer: build with layers/weasyprint/build.sh, then pass ARN:
+        #   cdk deploy -c weasyprint_layer_arn=arn:aws:lambda:us-east-1:ACCOUNT:layer:reachezy-weasyprint:1
+        weasyprint_layer_arn = self.node.try_get_context("weasyprint_layer_arn")
+        pdf_layers = [shared_layer]
+        if weasyprint_layer_arn:
+            pdf_layers.append(
+                _lambda.LayerVersion.from_layer_version_arn(
+                    self, "WeasyPrintLayer", weasyprint_layer_arn
+                )
+            )
+
         mediakit_pdf_fn = _lambda.Function(
             self,
             "MediakitPdfFn",
@@ -180,7 +190,7 @@ class ApiStack(cdk.Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="handler.handler",
             code=_lambda.Code.from_asset(os.path.join(lambdas_dir, "mediakit_pdf")),
-            layers=[shared_layer],
+            layers=pdf_layers,
             memory_size=512,
             timeout=cdk.Duration.seconds(60),
             environment={
@@ -220,8 +230,10 @@ class ApiStack(cdk.Stack):
             environment={
                 **db_env,
                 "BEDROCK_REGION": "us-east-1",
+                "BEDROCK_MODEL_ID": bedrock_model_id,
                 "AI_PROVIDER": ai_provider,
                 "GROQ_API_KEY": groq_api_key,
+                "BEDROCK_ROLE_ARN": bedrock_role_arn,
             },
         )
         db_secret.grant_read(brand_search_fn)
@@ -233,6 +245,14 @@ class ApiStack(cdk.Stack):
                 resources=["*"],
             )
         )
+        # Grant STS AssumeRole for cross-account Bedrock access
+        if bedrock_role_arn:
+            brand_search_fn.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["sts:AssumeRole"],
+                    resources=[bedrock_role_arn],
+                )
+            )
 
         # ----- 9. brand_wishlist — GET/POST/DELETE /brand/wishlist -----
         brand_wishlist_fn = _lambda.Function(

@@ -69,7 +69,6 @@ export default function MediaKit({
 }: MediaKitProps) {
   const followerBucket = getFollowerBucket(creator.followers_count);
   const [copied, setCopied] = useState(false);
-  const [pdfToast, setPdfToast] = useState(false);
 
   const handleCopyLink = () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -82,8 +81,7 @@ export default function MediaKit({
   };
 
   const handleDownloadPDF = () => {
-    setPdfToast(true);
-    setTimeout(() => setPdfToast(false), 3000);
+    window.print();
   };
 
   const formatFollowers = (count: number) => {
@@ -181,11 +179,15 @@ export default function MediaKit({
               <span className="material-symbols-outlined mr-2 group-hover:-translate-y-0.5 transition-transform">picture_as_pdf</span>
               Download PDF
             </button>
-            {pdfToast && (
-              <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 leading-snug text-center border border-amber-200">
-                PDF is coming soon. Use browser Print → Save as PDF for now.
-              </p>
-            )}
+            <style jsx global>{`
+              @media print {
+                body * { visibility: hidden; }
+                .mx-auto.max-w-4xl, .mx-auto.max-w-4xl * { visibility: visible; }
+                .mx-auto.max-w-4xl { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; padding: 20px; }
+                nav, header, footer, button, .btn-primary, .btn-secondary { display: none !important; }
+                @page { size: A4; margin: 15mm; }
+              }
+            `}</style>
           </div>
         </div>
 

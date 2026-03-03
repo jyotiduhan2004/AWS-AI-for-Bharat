@@ -99,6 +99,22 @@ export default function DashboardPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Poll for analysis completion every 10s while waiting
+  useEffect(() => {
+    if (analysisReady || uploadsCount === 0 || uploadsCount === null) return;
+    const interval = setInterval(async () => {
+      try {
+        const profileData = await api.getProfile();
+        if (profileData.style_profile) {
+          setProfile(profileData);
+          setStyleProfile(profileData.style_profile);
+          setAnalysisReady(true);
+        }
+      } catch { /* ignore polling errors */ }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [analysisReady, uploadsCount]);
+
   const handleLogout = () => { clearToken(); router.replace('/'); };
 
   if (loading) {

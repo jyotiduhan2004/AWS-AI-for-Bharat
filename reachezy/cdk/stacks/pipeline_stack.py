@@ -104,6 +104,8 @@ class PipelineStack(cdk.Stack):
         # AI provider config: "bedrock" (default) or "groq" (testing fallback)
         ai_provider = self.node.try_get_context("ai_provider") or "bedrock"
         groq_api_key = self.node.try_get_context("groq_api_key") or ""
+        bedrock_model_id = self.node.try_get_context("bedrock_model_id") or "us.amazon.nova-2-lite-v1:0"
+        bedrock_role_arn = self.node.try_get_context("bedrock_role_arn") or ""
 
         # Common environment variables
         base_env = {
@@ -115,6 +117,8 @@ class PipelineStack(cdk.Stack):
             "GUARDRAIL_VERSION": "DRAFT",
             "AI_PROVIDER": ai_provider,
             "GROQ_API_KEY": groq_api_key,
+            "BEDROCK_MODEL_ID": bedrock_model_id,
+            "BEDROCK_ROLE_ARN": bedrock_role_arn,
         }
 
         # NOTE: Lambdas run outside VPC for hackathon.
@@ -189,6 +193,14 @@ class PipelineStack(cdk.Stack):
                 resources=[guardrail.attr_guardrail_arn],
             )
         )
+        # Grant STS AssumeRole for cross-account Bedrock access
+        if bedrock_role_arn:
+            video_analyzer_fn.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["sts:AssumeRole"],
+                    resources=[bedrock_role_arn],
+                )
+            )
 
         # ----- 3. Embedding Generator (Amazon Titan Text Embeddings V2 via Bedrock) -----
         embedding_generator_fn = _lambda.Function(
@@ -216,6 +228,14 @@ class PipelineStack(cdk.Stack):
                 resources=["*"],
             )
         )
+        # Grant STS AssumeRole for cross-account Bedrock access
+        if bedrock_role_arn:
+            embedding_generator_fn.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["sts:AssumeRole"],
+                    resources=[bedrock_role_arn],
+                )
+            )
 
         # ----- 4. Profile Aggregator -----
         profile_aggregator_fn = _lambda.Function(

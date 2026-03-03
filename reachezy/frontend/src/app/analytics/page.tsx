@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import StyleDNA from '@/components/StyleDNA';
 import TopicCloud from '@/components/TopicCloud';
 import DashboardShell from '@/components/DashboardShell';
+import VideoAnalysisCard from '@/components/VideoAnalysisCard';
 import {
   BarChart,
   Bar,
@@ -28,6 +29,25 @@ interface StyleProfile {
   face_visible_pct: number;
   text_overlay_pct: number;
   settings: { name: string; pct: number }[];
+  video_count?: number;
+}
+
+interface VideoAnalysis {
+  video_number: number;
+  video_id: string;
+  energy_level: string;
+  aesthetic: string;
+  setting: string;
+  production_quality: string;
+  content_type: string;
+  topics: string[];
+  dominant_colors: string[];
+  has_text_overlay: boolean;
+  face_visible: boolean;
+  summary: string;
+  analyzed_at: string;
+  duration_seconds: number | null;
+  uploaded_at: string;
 }
 
 const BAR_COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'];
@@ -35,6 +55,7 @@ const BAR_COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'];
 export default function AnalyticsPage() {
   const router = useRouter();
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null);
+  const [videoAnalyses, setVideoAnalyses] = useState<VideoAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -47,10 +68,16 @@ export default function AnalyticsPage() {
       setDisplayName(profile.display_name || profile.username);
       setProfilePic(profile.profile_picture_url || '');
 
-      const mediaKit = await api.getMediaKit(profile.username);
-      if (mediaKit?.style_profile) {
-        setStyleProfile(mediaKit.style_profile);
+      const [mediaKit, analysesData] = await Promise.all([
+        api.getMediaKit(profile.username),
+        api.getVideoAnalyses().catch(() => ({ analyses: [] })),
+      ]);
+
+      const sp = mediaKit?.creator?.style_profile || profile.style_profile;
+      if (sp) {
+        setStyleProfile(sp);
       }
+      setVideoAnalyses(analysesData.analyses || []);
     } catch {
       router.replace('/dashboard');
     } finally {
@@ -61,6 +88,15 @@ export default function AnalyticsPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleDeleteVideo = async (videoId: string) => {
+    try {
+      await api.deleteVideoAnalysis(videoId);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to delete video analysis:', err);
+    }
+  };
 
   if (loading) {
     return (
@@ -120,6 +156,14 @@ export default function AnalyticsPage() {
           <p className="text-slate-600">
             AI-powered analysis of your unique content style and production patterns.
           </p>
+          {styleProfile.video_count && styleProfile.video_count > 0 && (
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary-50 border border-primary-200 px-3 py-1 text-sm font-medium text-primary-700">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-2.625 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0118 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-3.75 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 7.746 6 7.125v-1.5M4.875 8.25C5.496 8.25 6 8.754 6 9.375v1.5m0-5.25v5.25m0-5.25C6 5.004 6.504 4.5 7.125 4.5h9.75c.621 0 1.125.504 1.125 1.125m1.125 2.625h1.5m-1.5 0A1.125 1.125 0 0118 7.125v-1.5m1.125 2.625c-.621 0-1.125.504-1.125 1.125v1.5m2.625-2.625c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M18 5.625v5.25M7.125 12h9.75m-9.75 0A1.125 1.125 0 016 10.875M7.125 12C6.504 12 6 12.504 6 13.125m0-2.25C6 11.496 5.496 12 4.875 12M18 10.875c0 .621-.504 1.125-1.125 1.125M18 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m-12 5.25v-5.25m0 5.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125m-12 0v-1.5c0-.621-.504-1.125-1.125-1.125M18 18.375v-5.25m0 5.25v-1.5c0-.621.504-1.125 1.125-1.125M18 13.125v1.5c0 .621.504 1.125 1.125 1.125M18 13.125c0-.621.504-1.125 1.125-1.125M6 13.125v1.5c0 .621-.504 1.125-1.125 1.125M6 13.125C6 12.504 5.496 12 4.875 12m-1.5 0h1.5m-1.5 0c-.621 0-1.125-.504-1.125-1.125v-1.5c0-.621.504-1.125 1.125-1.125M19.125 12h1.5m0 0c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m1.5 3.75c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125" />
+              </svg>
+              Based on {styleProfile.video_count} video{styleProfile.video_count > 1 ? 's' : ''} analyzed
+            </span>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -187,6 +231,14 @@ export default function AnalyticsPage() {
               <p className="mt-4 text-center text-sm text-gray-600">
                 {consistencyLabel}
               </p>
+              <div className="mt-4 rounded-lg bg-blue-50 border border-blue-100 p-3">
+                <p className="text-xs font-medium text-blue-700 mb-1">How is this calculated?</p>
+                <p className="text-xs text-blue-600 leading-relaxed">
+                  Measures how similar your content style is across all videos.
+                  Checks 5 dimensions: energy, aesthetic, setting, production quality, and content type.
+                  Higher score = more consistent brand identity = more attractive to brands.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -291,6 +343,42 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
+
+        {/* Aggregate explanation banner */}
+        {videoAnalyses.length > 1 && (
+          <div className="mt-8 rounded-xl border border-primary-200 bg-gradient-to-r from-primary-50 to-blue-50 px-6 py-4">
+            <div className="flex items-start gap-3">
+              <svg className="h-5 w-5 text-primary-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-primary-800">
+                  Your profile above is computed from all {videoAnalyses.length} videos analyzed.
+                </p>
+                <p className="mt-1 text-xs text-primary-600">
+                  Individual video analyses are preserved below. Each video contributes to your aggregate style profile — no data is overwritten.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Per-video breakdown */}
+        {videoAnalyses.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-slate-900 mb-1">
+              Video-by-Video Breakdown
+            </h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Individual AI analysis for each uploaded video
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {videoAnalyses.map((va) => (
+                <VideoAnalysisCard key={va.video_id} analysis={va} onDelete={handleDeleteVideo} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </DashboardShell>
   );

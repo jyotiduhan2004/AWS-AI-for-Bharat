@@ -21,7 +21,7 @@ const NAV = [
   { href: '/dashboard/media-kit', icon: 'description', label: 'Media Kit' },
   { href: '/upload',              icon: 'upload',       label: 'Upload Videos' },
   { href: '/dashboard/settings',  icon: 'payments',    label: 'Rate Settings' },
-  { href: '/find-creators',       icon: 'explore',     label: 'Discover' },
+  { href: '/influencer-search',   icon: 'explore',     label: 'Discover' },
 ];
 
 export default function DashboardShell({

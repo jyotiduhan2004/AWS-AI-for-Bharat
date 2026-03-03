@@ -151,3 +151,12 @@ CREATE TABLE IF NOT EXISTS media_kits (
     pdf_s3_key TEXT,
     last_generated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- =============================================================================
+-- Migration: Widen VARCHAR columns for free-form LLM values
+-- Run once on existing databases to prevent truncation of AI-generated labels.
+-- =============================================================================
+ALTER TABLE video_analyses ALTER COLUMN energy_level TYPE VARCHAR(50);
+ALTER TABLE video_analyses ALTER COLUMN aesthetic TYPE VARCHAR(50);
+ALTER TABLE video_analyses ALTER COLUMN setting TYPE VARCHAR(50);
+ALTER TABLE video_analyses ALTER COLUMN production_quality TYPE VARCHAR(50);

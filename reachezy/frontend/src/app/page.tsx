@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { setToken } from '@/lib/auth';
 import { api } from '@/lib/api';
 
@@ -37,22 +38,22 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-10">
             <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="#features">Features</a>
             <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="#how-it-works">How It Works</a>
-            <a className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" onClick={() => router.push('/login?role=brand')} href="#">For Brands</a>
+            <Link className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors" href="/login?role=brand">For Brands</Link>
           </nav>
           {/* CTAs */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push('/login')}
+            <Link
+              href="/login"
               className="hidden sm:block text-sm font-bold text-slate-900 px-4 py-2 hover:bg-slate-200/50 rounded-lg transition-colors"
             >
               Login
-            </button>
-            <button
-              onClick={() => router.push('/login')}
+            </Link>
+            <Link
+              href="/login"
               className="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
             >
               Get Started
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -80,19 +81,19 @@ export default function LandingPage() {
                 </p>
 
                 <div className="flex flex-col gap-4 sm:flex-row">
-                  <button
-                    onClick={() => router.push('/login')}
+                  <Link
+                    href="/login"
                     className="flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-bold text-white shadow-xl shadow-primary/25 hover:-translate-y-0.5 transition-all active:scale-95"
                   >
                     I&apos;m a Creator
                     <span className="material-symbols-outlined text-xl leading-none" aria-hidden="true">arrow_forward</span>
-                  </button>
-                  <button
-                    onClick={() => router.push('/login?role=brand')}
+                  </Link>
+                  <Link
+                    href="/login?role=brand"
                     className="flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-8 py-4 text-base font-bold text-slate-900 hover:bg-slate-50 transition-all"
                   >
                     I&apos;m a Brand
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="flex items-center gap-4 pt-2">
@@ -259,12 +260,12 @@ export default function LandingPage() {
                 Join the community of creators and brands shaping the future of digital influence in India.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row">
-                <button
-                  onClick={() => router.push('/login')}
+                <Link
+                  href="/login"
                   className="rounded-xl bg-white px-10 py-4 text-lg font-bold text-primary transition-all hover:scale-105 active:scale-95 shadow-xl"
                 >
                   Start Your Journey
-                </button>
+                </Link>
                 <button
                   onClick={handleDemo}
                   disabled={demoLoading}

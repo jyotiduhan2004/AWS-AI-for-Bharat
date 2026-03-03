@@ -38,9 +38,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing creator_id' }, { status: 400 });
     }
 
-    // Fetch all uploaded (not yet analyzed) videos for this creator
+    // Fetch uploaded/processing videos that haven't been analyzed yet
     const { rows: videos } = await query(
-      `SELECT id, s3_key FROM video_uploads WHERE creator_id = $1 AND status = 'uploaded'`,
+      `SELECT vu.id, vu.s3_key FROM video_uploads vu
+       LEFT JOIN video_analyses va ON va.video_id = vu.id
+       WHERE vu.creator_id = $1
+         AND vu.status IN ('uploaded', 'processing')
+         AND va.video_id IS NULL`,
       [creator_id]
     );
 
@@ -51,37 +55,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Start a separate Step Functions execution for each video
+    // Start a separate Step Functions execution for each video (with per-video error handling)
     const executionArns: string[] = [];
-    for (const video of videos) {
-      const executionName = `analysis-${video.id}-${Date.now()}`;
-      const command = new StartExecutionCommand({
-        stateMachineArn: STATE_MACHINE_ARN,
-        name: executionName,
-        input: JSON.stringify({
-          source_bucket: S3_VIDEOS_BUCKET,
-          s3_key: video.s3_key,
-          video_id: video.id,
-          creator_id,
-        }),
-      });
+    const startedVideoIds: string[] = [];
+    const errors: string[] = [];
 
-      const result = await sfn.send(command);
-      executionArns.push(result.executionArn!);
+    for (const video of videos) {
+      try {
+        const executionName = `analysis-${video.id}-${Date.now()}`;
+        const command = new StartExecutionCommand({
+          stateMachineArn: STATE_MACHINE_ARN,
+          name: executionName,
+          input: JSON.stringify({
+            source_bucket: S3_VIDEOS_BUCKET,
+            s3_key: video.s3_key,
+            video_id: video.id,
+            creator_id,
+          }),
+        });
+
+        const result = await sfn.send(command);
+        executionArns.push(result.executionArn!);
+        startedVideoIds.push(video.id);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // Ignore "already running" errors — EventBridge may have started it
+        if (msg.includes('ExecutionAlreadyExists')) {
+          startedVideoIds.push(video.id);
+          continue;
+        }
+        errors.push(`video ${video.id}: ${msg}`);
+      }
     }
 
-    // Mark those videos as processing
-    await query(
-      `UPDATE video_uploads SET status = 'processing' WHERE creator_id = $1 AND status = 'uploaded'`,
-      [creator_id]
-    );
+    // Only mark successfully-started videos as processing
+    if (startedVideoIds.length > 0) {
+      await query(
+        `UPDATE video_uploads SET status = 'processing'
+         WHERE id = ANY($1::uuid[]) AND status = 'uploaded'`,
+        [startedVideoIds]
+      );
+    }
 
-    console.log(`Starting ${videos.length} pipeline execution(s) for creator ${creator_id}`);
+    console.log(
+      `Starting ${executionArns.length} pipeline execution(s) for creator ${creator_id}`,
+      errors.length ? `Errors: ${errors.join(', ')}` : ''
+    );
 
     return NextResponse.json({
       success: true,
-      executions: videos.length,
-      execution_arns: executionArns,
+      executions: executionArns.length,
+      total_videos: videos.length,
+      errors: errors.length ? errors : undefined,
     });
   } catch (e) {
     console.error('Error in POST /api/upload/analyze:', e);

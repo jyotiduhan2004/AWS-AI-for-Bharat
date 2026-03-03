@@ -41,16 +41,23 @@ interface CreatorCardProps {
 const ENERGY_COLORS: Record<string, string> = {
   high: 'bg-orange-100 text-orange-700',
   medium: 'bg-yellow-100 text-yellow-700',
+  moderate: 'bg-yellow-100 text-yellow-700',
   low: 'bg-blue-100 text-blue-700',
+  calm: 'bg-blue-100 text-blue-700',
+  chaotic: 'bg-red-100 text-red-700',
+  intense: 'bg-red-100 text-red-700',
 };
 
 const AESTHETIC_COLORS: Record<string, string> = {
   minimal: 'bg-gray-100 text-gray-700',
   vibrant: 'bg-pink-100 text-pink-700',
   'dark/moody': 'bg-slate-200 text-slate-700',
+  dark: 'bg-slate-200 text-slate-700',
   pastel: 'bg-purple-100 text-purple-700',
   natural: 'bg-green-100 text-green-700',
   luxury: 'bg-amber-100 text-amber-700',
+  corporate: 'bg-blue-100 text-blue-700',
+  streetwear: 'bg-zinc-200 text-zinc-700',
 };
 
 function getPriceTier(rates: Rates): { label: string; color: string } {

@@ -13,6 +13,7 @@ import hashlib
 import math
 import boto3
 from shared.db import get_db_connection
+from shared.bedrock_client import get_bedrock_client
 
 EMBEDDING_DIM = 1024
 AI_PROVIDER = os.environ.get("AI_PROVIDER", "bedrock")
@@ -53,7 +54,7 @@ def _build_embedding_text(analysis):
 
 def _generate_titan_embedding(text, dim=EMBEDDING_DIM):
     """Generate an embedding vector using Amazon Titan Text Embeddings V2 via Bedrock."""
-    bedrock = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
+    bedrock = get_bedrock_client(region=BEDROCK_REGION)
 
     response = bedrock.invoke_model(
         modelId=EMBEDDING_MODEL_ID,
