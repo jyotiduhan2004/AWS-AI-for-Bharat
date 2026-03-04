@@ -116,6 +116,26 @@ def _parse_query_with_bedrock(query):
             return result
 
         except Exception as e:
+            # If guardrail is the problem, retry without it
+            if "guardrail" in str(e).lower() and guardrail_kwargs:
+                print(f"Guardrail error with {model_id}, retrying without guardrail: {e}")
+                try:
+                    response = bedrock.converse(
+                        modelId=model_id,
+                        messages=[{
+                            "role": "user",
+                            "content": [{"text": PARSE_PROMPT + query}],
+                        }],
+                        inferenceConfig={"maxTokens": 512, "temperature": 0.1},
+                    )
+                    raw_text = response["output"]["message"]["content"][0]["text"]
+                    result = _extract_json(raw_text)
+                    print(f"Success with Bedrock model {model_id} (no guardrail)")
+                    return result
+                except Exception as e2:
+                    last_error = e2
+                    print(f"Bedrock model {model_id} also failed without guardrail: {e2}")
+                    continue
             last_error = e
             print(f"Bedrock model {model_id} failed: {e}")
             continue

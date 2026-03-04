@@ -143,6 +143,22 @@ def _analyze_with_bedrock(frame_data_list, video_id):
             return raw_text
 
         except Exception as e:
+            # If guardrail is the problem, retry without it
+            if "guardrail" in str(e).lower() and guardrail_kwargs:
+                print(f"Guardrail error with {model_id}, retrying without guardrail: {e}")
+                try:
+                    response = bedrock.converse(
+                        modelId=model_id,
+                        messages=[{"role": "user", "content": content_blocks}],
+                        inferenceConfig={"maxTokens": 1024, "temperature": 0.1},
+                    )
+                    raw_text = response["output"]["message"]["content"][0]["text"]
+                    print(f"Success with model {model_id} (no guardrail), response length: {len(raw_text)} chars")
+                    return raw_text
+                except Exception as e2:
+                    last_error = e2
+                    print(f"Bedrock model {model_id} also failed without guardrail: {e2}")
+                    continue
             last_error = e
             print(f"Bedrock model {model_id} failed for video {video_id}: {e}")
             continue
