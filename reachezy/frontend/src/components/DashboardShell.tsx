@@ -18,6 +18,7 @@ interface DashboardShellProps {
 
 const NAV = [
   { href: '/dashboard',           icon: 'dashboard',   label: 'Dashboard' },
+  { href: '/messages',            icon: 'chat',         label: 'Messages' },
   { href: '/dashboard/media-kit', icon: 'description', label: 'Media Kit' },
   { href: '/analytics',           icon: 'insights',    label: 'Detailed Analysis' },
   { href: '/upload',              icon: 'upload',       label: 'Upload Videos' },

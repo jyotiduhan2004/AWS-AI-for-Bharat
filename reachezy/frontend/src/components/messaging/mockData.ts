@@ -2,7 +2,11 @@ import { Conversation } from './types';
 
 export const CURRENT_USER_ID = 'me';
 
-export const mockConversations: Conversation[] = [
+/**
+ * Brand-side mock conversations (brand is logged in, talking to creators).
+ * Used when the current user is a brand.
+ */
+export const mockBrandConversations: Conversation[] = [
   {
     id: '1',
     person: {
@@ -137,3 +141,88 @@ export const mockConversations: Conversation[] = [
     lastMessageTime: 'Feb 25',
   },
 ];
+
+/**
+ * Creator-side mock conversations (creator is logged in, talking to brands).
+ * Used when the current user is a creator.
+ */
+export const mockCreatorConversations: Conversation[] = [
+  {
+    id: 'b1',
+    person: {
+      id: 'brand-nykaa',
+      name: 'Nykaa',
+      subtitle: 'Beauty & Cosmetics Brand',
+      avatar: '',
+      location: 'Mumbai, India',
+      company: 'Nykaa',
+      role: 'Brand',
+      email: 'collabs@nykaa.com',
+      niche: 'Beauty/Cosmetics',
+      followers: '',
+      joined: '',
+      bio: 'India\'s leading beauty and personal care platform. Looking for authentic creators to showcase our latest launches.',
+    },
+    messages: [
+      { id: 'bm1', senderId: 'brand-nykaa', text: 'Hi! We loved your recent skincare routine reel. Would you be interested in a collaboration?', timestamp: '11:00 AM' },
+      { id: 'bm2', senderId: CURRENT_USER_ID, text: 'Hey Nykaa! I\'d love to hear more about the campaign.', timestamp: '11:15 AM' },
+      { id: 'bm3', senderId: 'brand-nykaa', text: 'We\'re launching a new serum line and need 3 Reels + 5 Stories. Interested?', timestamp: '11:20 AM' },
+      { id: 'bm4', senderId: CURRENT_USER_ID, text: 'That sounds exciting! What\'s the timeline and compensation?', timestamp: '11:30 AM' },
+      { id: 'bm5', senderId: 'brand-nykaa', text: 'Campaign runs April 1-15. We\'ll send products + pay your standard reel rate. Deal?', timestamp: '11:35 AM' },
+    ],
+    lastMessage: 'Campaign runs April 1-15. We\'ll send products + pay your standard reel rate. Deal?',
+    lastMessageTime: '11:35 AM',
+  },
+  {
+    id: 'b2',
+    person: {
+      id: 'brand-boat',
+      name: 'boAt',
+      subtitle: 'Electronics & Audio Brand',
+      avatar: '',
+      location: 'Delhi, India',
+      company: 'boAt',
+      role: 'Brand',
+      email: 'creators@boat-lifestyle.com',
+      niche: 'Electronics',
+      followers: '',
+      joined: '',
+      bio: 'India\'s #1 earwear brand. We partner with creators who bring energy and authenticity to our products.',
+    },
+    messages: [
+      { id: 'bm6', senderId: 'brand-boat', text: 'Hey! We\'re launching new earbuds and think you\'d be a great fit for the campaign.', timestamp: 'Yesterday' },
+      { id: 'bm7', senderId: CURRENT_USER_ID, text: 'Hi boAt! I\'m a big fan of your products. What do you have in mind?', timestamp: 'Yesterday' },
+      { id: 'bm8', senderId: 'brand-boat', text: 'We need an unboxing reel + a lifestyle reel showing the earbuds in action. Budget is flexible!', timestamp: 'Yesterday' },
+    ],
+    lastMessage: 'We need an unboxing reel + a lifestyle reel showing the earbuds in action. Budget is flexible!',
+    lastMessageTime: 'Yesterday',
+  },
+  {
+    id: 'b3',
+    person: {
+      id: 'brand-mamaearth',
+      name: 'Mamaearth',
+      subtitle: 'Personal Care Brand',
+      avatar: '',
+      location: 'Gurugram, India',
+      company: 'Mamaearth',
+      role: 'Brand',
+      email: 'influencers@mamaearth.in',
+      niche: 'Personal Care',
+      followers: '',
+      joined: '',
+      bio: 'Toxin-free, natural personal care for the whole family. We believe in honest creator partnerships.',
+    },
+    messages: [
+      { id: 'bm9', senderId: 'brand-mamaearth', text: 'Hi there! We saw your content and think you align perfectly with our brand values.', timestamp: 'Mar 2' },
+      { id: 'bm10', senderId: CURRENT_USER_ID, text: 'Thank you! I love Mamaearth products. What collaboration are you thinking?', timestamp: 'Mar 2' },
+      { id: 'bm11', senderId: 'brand-mamaearth', text: 'A 4-week ambassador program with monthly product drops and dedicated content. Interested?', timestamp: 'Mar 2' },
+      { id: 'bm12', senderId: CURRENT_USER_ID, text: 'Absolutely! That sounds like a perfect long-term fit. Let\'s discuss the details.', timestamp: 'Mar 2' },
+    ],
+    lastMessage: 'Absolutely! That sounds like a perfect long-term fit. Let\'s discuss the details.',
+    lastMessageTime: 'Mar 2',
+  },
+];
+
+/** @deprecated Use mockBrandConversations instead */
+export const mockConversations = mockBrandConversations;

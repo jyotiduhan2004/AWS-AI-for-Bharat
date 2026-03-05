@@ -68,6 +68,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ action: 'demo', username }),
     }),
+  demoBrandLogin: (companyName: string) =>
+    fetchLocal('/auth/demo-brands', {
+      method: 'POST',
+      body: JSON.stringify({ company_name: companyName }),
+    }),
 
   // Email/password auth (local Next.js route → direct DB)
   signup: (data: {

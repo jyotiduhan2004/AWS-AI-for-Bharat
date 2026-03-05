@@ -21,6 +21,14 @@ interface DemoCreator {
   bio: string;
 }
 
+interface DemoBrand {
+  company_name: string;
+  industry: string;
+  contact_name: string;
+  email: string;
+  emoji: string;
+}
+
 function formatFollowers(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
@@ -37,6 +45,7 @@ function LoginPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoCreators, setDemoCreators] = useState<DemoCreator[]>([]);
+  const [demoBrands, setDemoBrands] = useState<DemoBrand[]>([]);
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
 
   // Form fields
@@ -58,14 +67,26 @@ function LoginPageInner() {
 
   const openDemoModal = async () => {
     setShowDemoModal(true);
-    if (demoCreators.length === 0) {
-      try {
-        const res = await fetch('/api/auth/demo-creators');
-        if (res.ok) {
-          const data = await res.json();
-          setDemoCreators(data.creators || []);
-        }
-      } catch { /* ignore */ }
+    if (role === 'brand') {
+      if (demoBrands.length === 0) {
+        try {
+          const res = await fetch('/api/auth/demo-brands');
+          if (res.ok) {
+            const data = await res.json();
+            setDemoBrands(data.brands || []);
+          }
+        } catch { /* ignore */ }
+      }
+    } else {
+      if (demoCreators.length === 0) {
+        try {
+          const res = await fetch('/api/auth/demo-creators');
+          if (res.ok) {
+            const data = await res.json();
+            setDemoCreators(data.creators || []);
+          }
+        } catch { /* ignore */ }
+      }
     }
   };
 
@@ -81,6 +102,18 @@ function LoginPageInner() {
     }
   };
 
+  const handleDemoBrandLogin = async (companyName: string) => {
+    setDemoLoading(companyName);
+    try {
+      const data = await api.demoBrandLogin(companyName);
+      setToken(data.session_token);
+      router.push('/brand/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Demo login failed');
+      setDemoLoading(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -89,7 +122,7 @@ function LoginPageInner() {
       if (mode === 'login') {
         const data = await api.login({ email, password });
         setToken(data.session_token);
-        router.push('/dashboard');
+        router.push(data.role === 'brand' ? '/brand/dashboard' : '/dashboard');
       } else {
         const payload =
           role === 'creator'
@@ -97,7 +130,7 @@ function LoginPageInner() {
             : { action: 'signup' as const, email, password, full_name: contactName, company_name: companyName, industry, role: 'brand' as const };
         const data = await api.signup(payload);
         setToken(data.session_token);
-        router.push(role === 'creator' ? '/onboarding' : '/find-creators');
+        router.push(role === 'creator' ? '/onboarding' : '/brand/dashboard');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -279,7 +312,7 @@ function LoginPageInner() {
               >
                 <span className="material-symbols-outlined">play_circle</span>
                 Try Demo Account
-                <span className="text-sm font-normal opacity-70 group-hover:opacity-100 transition-opacity">— pick a creator</span>
+                <span className="text-sm font-normal opacity-70 group-hover:opacity-100 transition-opacity">— pick a {role === 'brand' ? 'brand' : 'creator'}</span>
               </button>
             </div>
 
@@ -320,8 +353,12 @@ function LoginPageInner() {
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">Choose a Demo Creator</h2>
-                  <p className="text-slate-500 text-sm mt-1">Explore ReachEzy as a sample creator</p>
+                  <h2 className="text-2xl font-black text-slate-900">
+                    {role === 'brand' ? 'Choose a Demo Brand' : 'Choose a Demo Creator'}
+                  </h2>
+                  <p className="text-slate-500 text-sm mt-1">
+                    {role === 'brand' ? 'Explore ReachEzy as a sample brand' : 'Explore ReachEzy as a sample creator'}
+                  </p>
                 </div>
                 <button onClick={() => setShowDemoModal(false)} className="rounded-full p-2 hover:bg-slate-100 transition-colors">
                   <span className="material-symbols-outlined text-slate-400">close</span>
@@ -329,42 +366,77 @@ function LoginPageInner() {
               </div>
 
               <div className="space-y-3">
-                {demoCreators.length === 0 ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-                  </div>
-                ) : (
-                  demoCreators.map((c) => (
-                    <button
-                      key={c.username}
-                      onClick={() => handleDemoLogin(c.username)}
-                      disabled={!!demoLoading}
-                      className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-50"
-                    >
-                      <div className="h-12 w-12 rounded-full overflow-hidden flex-shrink-0 border border-primary/10 bg-gradient-to-br from-primary/20 to-primary/5">
-                        {c.avatar_url ? (
-                          <img src={c.avatar_url} alt={c.display_name} className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-2xl">{c.emoji}</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900">{c.display_name}</span>
-                          <span className="badge-primary">{c.tier} Creator</span>
+                {role === 'brand' ? (
+                  demoBrands.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                    </div>
+                  ) : (
+                    demoBrands.map((b) => (
+                      <button
+                        key={b.company_name}
+                        onClick={() => handleDemoBrandLogin(b.company_name)}
+                        disabled={!!demoLoading}
+                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-50"
+                      >
+                        <div className="h-12 w-12 rounded-full overflow-hidden flex-shrink-0 border border-primary/10 bg-gradient-to-br from-primary/20 to-primary/5">
+                          <span className="flex h-full w-full items-center justify-center text-2xl">{b.emoji}</span>
                         </div>
-                        <p className="text-sm text-slate-500 truncate">
-                          @{c.username} · {c.niche} · {c.city}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">{formatFollowers(c.followers_count)} followers</p>
-                      </div>
-                      {demoLoading === c.username ? (
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary flex-shrink-0" />
-                      ) : (
-                        <span className="material-symbols-outlined text-slate-300 flex-shrink-0">arrow_forward_ios</span>
-                      )}
-                    </button>
-                  ))
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-900">{b.company_name}</span>
+                            <span className="badge-primary">{b.industry}</span>
+                          </div>
+                          <p className="text-sm text-slate-500 truncate">
+                            {b.contact_name} · {b.email}
+                          </p>
+                        </div>
+                        {demoLoading === b.company_name ? (
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary flex-shrink-0" />
+                        ) : (
+                          <span className="material-symbols-outlined text-slate-300 flex-shrink-0">arrow_forward_ios</span>
+                        )}
+                      </button>
+                    ))
+                  )
+                ) : (
+                  demoCreators.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                    </div>
+                  ) : (
+                    demoCreators.map((c) => (
+                      <button
+                        key={c.username}
+                        onClick={() => handleDemoLogin(c.username)}
+                        disabled={!!demoLoading}
+                        className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-50"
+                      >
+                        <div className="h-12 w-12 rounded-full overflow-hidden flex-shrink-0 border border-primary/10 bg-gradient-to-br from-primary/20 to-primary/5">
+                          {c.avatar_url ? (
+                            <img src={c.avatar_url} alt={c.display_name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-2xl">{c.emoji}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-900">{c.display_name}</span>
+                            <span className="badge-primary">{c.tier} Creator</span>
+                          </div>
+                          <p className="text-sm text-slate-500 truncate">
+                            @{c.username} · {c.niche} · {c.city}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">{formatFollowers(c.followers_count)} followers</p>
+                        </div>
+                        {demoLoading === c.username ? (
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary flex-shrink-0" />
+                        ) : (
+                          <span className="material-symbols-outlined text-slate-300 flex-shrink-0">arrow_forward_ios</span>
+                        )}
+                      </button>
+                    ))
+                  )
                 )}
               </div>
 

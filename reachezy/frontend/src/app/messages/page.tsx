@@ -6,39 +6,55 @@ import AppNavbar from '@/components/AppNavbar';
 import ConversationList from '@/components/messaging/ConversationList';
 import ChatWindow from '@/components/messaging/ChatWindow';
 import PersonDetails from '@/components/messaging/PersonDetails';
-import { mockConversations, CURRENT_USER_ID } from '@/components/messaging/mockData';
+import {
+  mockBrandConversations,
+  mockCreatorConversations,
+  CURRENT_USER_ID,
+} from '@/components/messaging/mockData';
 import { Conversation } from '@/components/messaging/types';
+import { getUserRole } from '@/lib/auth';
 
 export default function MessagesPage() {
   const searchParams = useSearchParams();
   const creatorName = searchParams.get('name');
+  const role = getUserRole();
+  const isBrand = role === 'brand';
 
-  // If a creator name is passed via query param, find or create a conversation for them
+  // Brand sees creator conversations; creator sees brand conversations
+  const baseConversations = isBrand
+    ? mockBrandConversations
+    : mockCreatorConversations;
+
+  // If a name is passed via query param (brand clicking "Message" on a creator card),
+  // find or create a conversation for them
   const { initialConversations, initialSelectedId } = useMemo(() => {
     if (!creatorName) {
-      return { initialConversations: mockConversations, initialSelectedId: mockConversations[0].id };
+      return {
+        initialConversations: baseConversations,
+        initialSelectedId: baseConversations[0]?.id || '',
+      };
     }
 
-    // Check if a conversation already exists for this creator
-    const existing = mockConversations.find(
+    // Check if a conversation already exists for this person
+    const existing = baseConversations.find(
       (c) => c.person.name.toLowerCase() === creatorName.toLowerCase()
     );
 
     if (existing) {
-      return { initialConversations: mockConversations, initialSelectedId: existing.id };
+      return { initialConversations: baseConversations, initialSelectedId: existing.id };
     }
 
-    // Create a new conversation for this creator
+    // Create a new conversation
     const newConv: Conversation = {
       id: `new-${Date.now()}`,
       person: {
         id: `p-new-${Date.now()}`,
         name: creatorName,
-        subtitle: searchParams.get('niche') || 'Creator',
+        subtitle: searchParams.get('niche') || (isBrand ? 'Creator' : 'Brand'),
         avatar: '',
         location: searchParams.get('city') || '',
         company: '',
-        role: 'Content Creator',
+        role: isBrand ? 'Content Creator' : 'Brand',
         email: '',
         niche: searchParams.get('niche') || '',
         followers: searchParams.get('followers') || '',
@@ -58,10 +74,10 @@ export default function MessagesPage() {
     };
 
     return {
-      initialConversations: [newConv, ...mockConversations],
+      initialConversations: [newConv, ...baseConversations],
       initialSelectedId: newConv.id,
     };
-  }, [creatorName, searchParams]);
+  }, [creatorName, searchParams, baseConversations, isBrand]);
 
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [selectedId, setSelectedId] = useState<string>(initialSelectedId);

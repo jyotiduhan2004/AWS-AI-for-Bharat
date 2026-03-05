@@ -2,291 +2,210 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { getUserSession } from '@/lib/auth';
-import CreatorCard from '@/components/CreatorCard';
 import AppNavbar from '@/components/AppNavbar';
 
-interface StyleProfile {
-  dominant_energy?: string;
-  dominant_aesthetic?: string;
-  primary_content_type?: string;
-  topics?: string[];
+interface BrandInfo {
+  company_name: string;
+  industry: string;
+  contact_name: string;
+  email: string;
 }
-
-interface Rates {
-  reel_rate: number;
-  story_rate: number;
-  post_rate: number;
-  accepts_barter: boolean;
-}
-
-interface Creator {
-  creator_id: string;
-  username: string;
-  display_name: string;
-  bio: string;
-  niche: string;
-  city: string;
-  followers_count: number;
-  media_count: number;
-  profile_picture_url: string | null;
-  style_profile: StyleProfile | null;
-  rates: Rates | null;
-}
-
-interface ParsedQuery {
-  niche?: string | null;
-  city?: string | null;
-  energy?: string | null;
-  aesthetic?: string | null;
-  topics?: string[];
-}
-
-const SUGGESTED_QUERIES = [
-  'beauty influencer in mumbai',
-  'tech reviewer with calm energy',
-  'chaotic comedy creator in delhi',
-  'food blogger in bangalore',
-  'fashion influencer with vibrant aesthetic',
-  'fitness creator in pune',
-];
 
 export default function BrandDashboardPage() {
   const router = useRouter();
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Creator[]>([]);
-  const [parsed, setParsed] = useState<ParsedQuery | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [searchDone, setSearchDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [brand, setBrand] = useState<BrandInfo | null>(null);
+  const [savedCount, setSavedCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  // Auth check
   useEffect(() => {
     const session = getUserSession();
     if (!session || session.role !== 'brand') {
       router.replace('/login?role=brand');
+      return;
     }
+    // Extract brand info from token
+    setBrand({
+      company_name: session.username || 'Your Brand',
+      industry: '',
+      contact_name: '',
+      email: '',
+    });
+    setLoading(false);
   }, [router]);
 
-  // Load all creators + wishlist IDs on mount
-  const loadInitialData = useCallback(async () => {
-    try {
-      const data = await api.getAllCreators();
-      setResults(data.results || []);
-      setSearchDone(true);
-    } catch {
-      // Ignore — will show empty state
-    }
-
+  const loadWishlistCount = useCallback(async () => {
     try {
       const data = await api.getWishlist();
-      const ids = new Set<string>(
-        (data.wishlist || []).map((c: Creator) => c.creator_id)
-      );
-      setSavedIds(ids);
+      setSavedCount((data.wishlist || []).length);
     } catch {
-      // Ignore — wishlist might be empty
+      // ignore
     }
   }, []);
 
   useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
+    loadWishlistCount();
+  }, [loadWishlistCount]);
 
-  const handleSearch = async (searchQuery?: string) => {
-    const q = (searchQuery || query).trim();
-    if (!q) return;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AppNavbar savedCount={0} />
+        <div className="py-16 text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
+        </div>
+      </div>
+    );
+  }
 
-    setQuery(q);
-    setSearching(true);
-    setError(null);
-    setSearchDone(false);
-    try {
-      const data = await api.searchCreators(q);
-      setResults(data.results || []);
-      setParsed(data.parsed || null);
-      setSearchDone(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed');
-      setSearchDone(true);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleToggleSave = async (creatorId: string) => {
-    setSavingId(creatorId);
-    try {
-      if (savedIds.has(creatorId)) {
-        await api.removeFromWishlist(creatorId);
-        setSavedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(creatorId);
-          return next;
-        });
-      } else {
-        await api.addToWishlist(creatorId);
-        setSavedIds((prev) => new Set(prev).add(creatorId));
-      }
-    } catch (err) {
-      console.error('Wishlist toggle error:', err);
-    } finally {
-      setSavingId(null);
-    }
-  };
-
-  const parsedBadges = parsed
-    ? Object.entries(parsed).filter(
-        ([key, val]) =>
-          val && key !== 'topics' && key !== 'min_followers' && key !== 'max_followers'
-      )
-    : [];
+  const companyInitial = (brand?.company_name || 'B')[0].toUpperCase();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppNavbar savedCount={savedIds.size} />
+      <AppNavbar savedCount={savedCount} />
 
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        {/* Search Section */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            Find Your Perfect Creator
-          </h1>
-          <p className="mt-2 text-gray-600">
-            Describe the creator you&apos;re looking for in natural language
-          </p>
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        {/* Brand Profile Header */}
+        <div className="rounded-xl border border-gray-200 bg-white p-8">
+          <div className="flex items-center gap-6">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-3xl font-bold text-white shadow-lg">
+              {companyInitial}
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {brand?.company_name}
+              </h1>
+              <p className="mt-1 text-gray-500">
+                Welcome back to your brand dashboard
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="mx-auto mb-8 max-w-2xl">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSearch();
-            }}
-            className="flex gap-3"
-          >
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder='e.g. "chaotic beauty influencer in noida"'
-              className="input-field flex-1 text-base"
-            />
-            <button
-              type="submit"
-              disabled={searching || !query.trim()}
-              className="btn-primary shrink-0"
+        {/* Quick Stats */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-100">
+                <svg className="h-5 w-5 text-pink-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{savedCount}</p>
+                <p className="text-sm text-gray-500">Saved Creators</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+                <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">5</p>
+                <p className="text-sm text-gray-500">Conversations</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+                <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">50+</p>
+                <p className="text-sm text-gray-500">Creators Available</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Quick Actions</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Link
+              href="/influencer-search"
+              className="group flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 transition-all hover:border-primary-300 hover:shadow-md"
             >
-              {searching ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              ) : (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 transition-colors group-hover:bg-primary-200">
+                <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
-              )}
-            </button>
-          </form>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Find Creators</h3>
+                <p className="mt-0.5 text-sm text-gray-500">
+                  Search and discover influencers
+                </p>
+              </div>
+            </Link>
 
-          {/* Parsed badges */}
-          {parsedBadges.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-xs text-gray-400">Parsed:</span>
-              {parsedBadges.map(([key, val]) => (
-                <span
-                  key={key}
-                  className="inline-flex items-center rounded-full bg-primary-100 px-3 py-1 text-xs font-medium text-primary-700"
-                >
-                  {key}: {String(val)}
-                </span>
-              ))}
-              {parsed?.topics && parsed.topics.length > 0 && (
-                parsed.topics.map((t) => (
-                  <span
-                    key={t}
-                    className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600"
-                  >
-                    {t}
-                  </span>
-                ))
-              )}
-            </div>
-          )}
+            <Link
+              href="/brand/wishlist"
+              className="group flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 transition-all hover:border-pink-300 hover:shadow-md"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-pink-100 transition-colors group-hover:bg-pink-200">
+                <svg className="h-6 w-6 text-pink-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Saved Creators</h3>
+                <p className="mt-0.5 text-sm text-gray-500">
+                  View your shortlisted creators
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              href="/messages"
+              className="group flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 transition-all hover:border-blue-300 hover:shadow-md"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 transition-colors group-hover:bg-blue-200">
+                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Messages</h3>
+                <p className="mt-0.5 text-sm text-gray-500">
+                  Chat with creators
+                </p>
+              </div>
+            </Link>
+          </div>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="mx-auto mb-6 max-w-2xl rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
-          </div>
-        )}
-
-        {/* Search Results / All Creators */}
-        {searchDone && (
-          <>
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                {query.trim()
-                  ? `${results.length} creator${results.length !== 1 ? 's' : ''} found`
-                  : `Explore Creators (${results.length})`}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {SUGGESTED_QUERIES.slice(0, 3).map((sq) => (
-                  <button
-                    key={sq}
-                    onClick={() => {
-                      setQuery(sq);
-                      handleSearch(sq);
-                    }}
-                    className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-500 transition-colors hover:border-primary-300 hover:text-primary-700"
-                  >
-                    {sq}
-                  </button>
-                ))}
+        {/* How it works */}
+        <div className="mt-8 rounded-xl border border-gray-200 bg-white p-8">
+          <h2 className="mb-6 text-lg font-semibold text-gray-900">How ReachEzy Works</h2>
+          <div className="grid gap-6 sm:grid-cols-4">
+            {[
+              { step: '1', title: 'Discover', desc: 'Search creators by niche, city, style, and more using AI-powered search' },
+              { step: '2', title: 'Shortlist', desc: 'Save your favorite creators to your wishlist for easy comparison' },
+              { step: '3', title: 'Connect', desc: 'Send messages directly to creators and discuss collaborations' },
+              { step: '4', title: 'Collaborate', desc: 'Finalize deals, send briefs, and launch your campaign' },
+            ].map((item) => (
+              <div key={item.step} className="text-center">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-700">
+                  {item.step}
+                </div>
+                <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                <p className="mt-1 text-sm text-gray-500">{item.desc}</p>
               </div>
-            </div>
-            {results.length === 0 ? (
-              <div className="py-16 text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" />
-                </svg>
-                <p className="mt-4 text-gray-500">No creators match your search</p>
-                <p className="text-sm text-gray-400">Try a different query or broaden your criteria</p>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {results.map((creator) => (
-                  <CreatorCard
-                    key={creator.creator_id}
-                    creator={creator}
-                    isSaved={savedIds.has(creator.creator_id)}
-                    onToggleSave={handleToggleSave}
-                    savingId={savingId}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Loading state — initial load */}
-        {!searchDone && !searching && (
-          <div className="py-16 text-center">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-            <p className="text-gray-600">Loading creators...</p>
+            ))}
           </div>
-        )}
-
-        {/* Loading state */}
-        {searching && (
-          <div className="py-16 text-center">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-            <p className="text-gray-600">Searching creators with AI...</p>
-            <p className="text-sm text-gray-400">Parsing your query and finding matches</p>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
