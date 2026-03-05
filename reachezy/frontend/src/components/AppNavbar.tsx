@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { clearToken, getUserRole } from '@/lib/auth';
+import { clearToken, getUserSession } from '@/lib/auth';
+import NotificationsDropdown from './NotificationsDropdown';
 
 interface AppNavbarProps {
   savedCount?: number;
@@ -13,8 +14,11 @@ export default function AppNavbar({
 }: AppNavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const role = getUserRole();
+  const session = getUserSession();
+  const role = session?.role;
   const isBrand = role === 'brand';
+  const avatarUrl = session?.avatar_url;
+  const initials = (session?.username || 'U')[0].toUpperCase();
 
   const handleLogout = () => {
     clearToken();
@@ -84,6 +88,18 @@ export default function AppNavbar({
               Upload
             </Link>
           )}
+
+          <div className="mx-2">
+            <NotificationsDropdown />
+          </div>
+
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full overflow-hidden cursor-pointer ${avatarUrl ? 'bg-white border border-slate-200' : 'bg-gradient-to-br from-primary-500 to-primary-600'}`}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-contain p-0.5" />
+            ) : (
+              <span className="text-sm font-bold text-white">{initials}</span>
+            )}
+          </div>
 
           <button
             onClick={handleLogout}

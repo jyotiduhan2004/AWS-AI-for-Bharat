@@ -1,6 +1,14 @@
 import Link from 'next/link';
-import MediaKit from '@/components/MediaKit';
+import dynamic from 'next/dynamic';
 
+const MediaKit = dynamic(() => import('@/components/MediaKit'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center p-12">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  ),
+});
 export const revalidate = 3600;
 
 interface PageProps {
@@ -51,9 +59,13 @@ interface MediaKitData {
 }
 
 async function getMediaKitData(username: string): Promise<MediaKitData | null> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  // Use the local Next.js API route; falls back to localhost during build/dev
+  const baseUrl =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    'http://localhost:3000';
   try {
-    const res = await fetch(`${API_URL}/creator/mediakit/${username}`, {
+    const res = await fetch(`${baseUrl}/api/creator/mediakit/${username}`, {
       cache: 'no-store',
     });
     if (!res.ok) return null;

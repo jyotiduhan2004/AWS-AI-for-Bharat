@@ -78,6 +78,7 @@ export default function DashboardPage() {
   const isDemo = profile.cognito_sub?.startsWith('demo_') ?? false;
 
   return (
+    <div className="overflow-y-auto h-full">
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       {/* Profile Summary Card */}
       <section className="bg-white rounded-2xl border border-slate-200 p-6">
@@ -300,6 +301,7 @@ export default function DashboardPage() {
           Upload More Videos
         </Link>
       </div>
+    </div>
     </div>
   );
 }

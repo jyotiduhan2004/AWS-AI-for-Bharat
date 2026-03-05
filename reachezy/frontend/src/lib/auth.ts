@@ -40,6 +40,7 @@ interface UserSession {
   role?: 'creator' | 'brand';
   cognito_sub?: string;
   username?: string;
+  avatar_url?: string;
   iat?: number;
   exp?: number;
 }

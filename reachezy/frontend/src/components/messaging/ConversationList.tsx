@@ -8,8 +8,15 @@ interface ConversationListProps {
   onSelect: (id: string) => void;
 }
 
-function AvatarFallback({ name, className }: { name: string; className?: string }) {
+function AvatarFallback({ name, src, className }: { name: string; src?: string; className?: string }) {
   const initial = (name || 'U')[0].toUpperCase();
+  if (src) {
+    return (
+      <div className={`flex items-center justify-center rounded-full bg-white border border-slate-200 overflow-hidden flex-shrink-0 ${className || ''}`}>
+        <img src={src} alt={name} className="h-full w-full object-contain p-0.5" />
+      </div>
+    );
+  }
   return (
     <div
       className={`flex items-center justify-center rounded-full bg-gradient-to-br from-primary/70 to-primary text-white font-bold flex-shrink-0 ${className || ''}`}
@@ -68,7 +75,7 @@ export default function ConversationList({
                     : ''
                 }`}
               >
-                <AvatarFallback name={conv.person.name} className="size-10 text-sm" />
+                <AvatarFallback name={conv.person.name} src={conv.person.avatar} className="size-10 text-sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-900 truncate">

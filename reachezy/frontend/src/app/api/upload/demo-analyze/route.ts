@@ -14,20 +14,19 @@ import { getUserFromRequest } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 
 const sfn = new SFNClient({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.NEXT_PUBLIC_AWS_REGION || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
   },
 });
 
 const STATE_MACHINE_ARN =
-  process.env.SFN_STATE_MACHINE_ARN ||
-  process.env.STATE_MACHINE_ARN ||
-  'arn:aws:states:us-east-1:424040537460:stateMachine:reachezy-video-analysis';
+  process.env.NEXT_PUBLIC_SFN_STATE_MACHINE_ARN ||
+  'arn:aws:states:us-east-1:424040537460:stateMachine:Reachezy-DemoWorkflow';
 
 const S3_VIDEOS_BUCKET =
-  process.env.S3_VIDEOS_BUCKET || 'reachezy-videos-424040537460';
+  process.env.NEXT_PUBLIC_S3_VIDEOS_BUCKET || 'reachezy-videos-424040537460';
 
 export async function POST(req: NextRequest) {
   try {

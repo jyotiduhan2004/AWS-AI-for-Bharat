@@ -15,7 +15,8 @@ function generateSessionToken(
   userId: string,
   creatorId: string | null,
   role: string,
-  username: string
+  username: string,
+  avatarUrl?: string
 ): string {
   const cognitoSub = `email_${createHash('sha256').update(userId).digest('hex').slice(0, 16)}`;
   const payload = {
@@ -24,6 +25,7 @@ function generateSessionToken(
     role,
     cognito_sub: cognitoSub,
     username: username || '',
+    avatar_url: avatarUrl,
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 86400 * 7,
     jti: randomUUID(),
@@ -97,7 +99,7 @@ async function handleSignup(body: Record<string, unknown>) {
   );
   const userId = userResult.rows[0].id;
 
-  const sessionToken = generateSessionToken(userId, creatorId, role, username);
+  const sessionToken = generateSessionToken(userId, creatorId, role, username, undefined);
 
   const result: Record<string, unknown> = {
     user_id: userId,
@@ -124,7 +126,7 @@ async function handleLogin(body: Record<string, unknown>) {
   const passwordHash = hashPassword(password);
 
   const result = await query(
-    `SELECT u.id, u.role, u.creator_id, u.company_name, u.email,
+    `SELECT u.id, u.role, u.creator_id, u.company_name, u.email, u.avatar_url,
             c.username, c.display_name
      FROM users u
      LEFT JOIN creators c ON u.creator_id = c.id
@@ -137,7 +139,7 @@ async function handleLogin(body: Record<string, unknown>) {
   }
 
   const row = result.rows[0];
-  const sessionToken = generateSessionToken(row.id, row.creator_id, row.role, row.username);
+  const sessionToken = generateSessionToken(row.id, row.creator_id, row.role, row.username, row.avatar_url);
 
   const resp: Record<string, unknown> = {
     user_id: row.id,

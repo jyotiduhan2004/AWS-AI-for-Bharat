@@ -11,14 +11,14 @@ import { getUserFromRequest } from '@/lib/session';
 export const dynamic = 'force-dynamic';
 
 const s3 = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.NEXT_PUBLIC_AWS_REGION || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
   },
 });
 
-const BUCKET = process.env.S3_VIDEOS_BUCKET || 'reachezy-videos-424040537460';
+const BUCKET = process.env.NEXT_PUBLIC_S3_VIDEOS_BUCKET || 'reachezy-videos-424040537460';
 
 export async function POST(req: NextRequest) {
   try {

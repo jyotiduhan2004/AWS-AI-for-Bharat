@@ -17,6 +17,7 @@ const DEMO_BRANDS = [
     contact_name: 'Aditi Kapoor',
     email: 'demo-nykaa@reachezy.com',
     emoji: '💄',
+    avatar_url: '/assets/brands/nykaa.svg?v=4'
   },
   {
     company_name: 'boAt',
@@ -24,6 +25,7 @@ const DEMO_BRANDS = [
     contact_name: 'Vikram Mehta',
     email: 'demo-boat@reachezy.com',
     emoji: '🎧',
+    avatar_url: '/assets/brands/boat.svg?v=4'
   },
   {
     company_name: 'Mamaearth',
@@ -31,13 +33,15 @@ const DEMO_BRANDS = [
     contact_name: 'Riya Singh',
     email: 'demo-mamaearth@reachezy.com',
     emoji: '🌿',
+    avatar_url: '/assets/brands/mamaearth.jpeg?v=4'
   },
 ];
 
 function generateSessionToken(
   userId: string,
   role: string,
-  companyName: string
+  companyName: string,
+  avatarUrl?: string
 ): string {
   const cognitoSub = `email_${createHash('sha256').update(userId).digest('hex').slice(0, 16)}`;
   return JSON.stringify({
@@ -46,6 +50,7 @@ function generateSessionToken(
     role,
     cognito_sub: cognitoSub,
     username: companyName,
+    avatar_url: avatarUrl,
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 86400 * 7,
     jti: randomUUID(),
@@ -71,6 +76,7 @@ export async function GET() {
         contact_name: row.contact_name,
         email: row.email,
         emoji: meta?.emoji || '🏢',
+        avatar_url: meta?.avatar_url,
       };
     });
 
@@ -125,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     const row = result.rows[0];
-    const sessionToken = generateSessionToken(row.id, 'brand', row.company_name);
+    const sessionToken = generateSessionToken(row.id, 'brand', row.company_name, meta.avatar_url);
 
     return NextResponse.json({
       user_id: row.id,

@@ -117,6 +117,7 @@ export default function DashboardSettingsPage() {
     }`;
 
   return (
+    <div className="overflow-y-auto h-full">
     <div className="p-8 max-w-2xl mx-auto space-y-6">
       {/* Tab switcher */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
@@ -286,6 +287,7 @@ export default function DashboardSettingsPage() {
           </form>
         </section>
       )}
+    </div>
     </div>
   );
 }

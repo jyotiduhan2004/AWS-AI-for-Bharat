@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       city: row.city,
       followers_count: row.followers_count,
       media_count: row.media_count,
-      profile_picture_url: row.profile_picture_url,
+      profile_picture_url: row.profile_picture_url || `/assets/creators/${row.username}.jpg`,
       style_profile: row.style_profile || null,
       rates: row.reel_rate != null
         ? {

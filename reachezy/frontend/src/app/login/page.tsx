@@ -27,6 +27,7 @@ interface DemoBrand {
   contact_name: string;
   email: string;
   emoji: string;
+  avatar_url?: string;
 }
 
 function formatFollowers(n: number) {
@@ -177,8 +178,7 @@ function LoginPageInner() {
             </p>
           </div>
 
-          {/* Role Toggle (signup only) */}
-          {mode === 'signup' && (
+          {/* Role Toggle */}
             <div className="px-8 pb-6">
               <div className="flex h-12 w-full items-center justify-center rounded-xl bg-background-light p-1.5">
                 {(['creator', 'brand'] as Role[]).map((r) => (
@@ -199,7 +199,6 @@ function LoginPageInner() {
                 ))}
               </div>
             </div>
-          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="px-8 pb-10 space-y-5">
@@ -379,8 +378,12 @@ function LoginPageInner() {
                         disabled={!!demoLoading}
                         className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-50"
                       >
-                        <div className="h-12 w-12 rounded-full overflow-hidden flex-shrink-0 border border-primary/10 bg-gradient-to-br from-primary/20 to-primary/5">
-                          <span className="flex h-full w-full items-center justify-center text-2xl">{b.emoji}</span>
+                        <div className={`h-12 w-12 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${b.avatar_url ? 'bg-white border border-slate-200' : 'border border-primary/10 bg-gradient-to-br from-primary/20 to-primary/5'}`}>
+                          {b.avatar_url ? (
+                            <img src={b.avatar_url} alt={b.company_name} className="h-full w-full object-contain p-1.5" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-2xl">{b.emoji}</span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">

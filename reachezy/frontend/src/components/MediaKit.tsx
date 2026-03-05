@@ -205,6 +205,14 @@ export default function MediaKit({
           return Promise.resolve();
         }
         const originalSrc = img.src;
+
+        // Skip video files — they can't render as images and would stall the proxy
+        const srcPath = originalSrc.split('?')[0].toLowerCase();
+        if (['.mp4', '.mov', '.webm', '.avi', '.mkv', '.m4v'].some(ext => srcPath.endsWith(ext))) {
+          img.removeAttribute('src');
+          return Promise.resolve();
+        }
+
         // Only proxy external URLs (S3, CDN, etc.)
         if (!originalSrc.startsWith(window.location.origin) || originalSrc.includes('amazonaws.com')) {
           img.src = `/api/proxy-image?url=${encodeURIComponent(originalSrc)}`;

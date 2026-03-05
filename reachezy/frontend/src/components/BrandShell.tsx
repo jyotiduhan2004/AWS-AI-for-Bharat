@@ -5,39 +5,26 @@ import { usePathname, useRouter } from 'next/navigation';
 import { clearToken } from '@/lib/auth';
 import NotificationsDropdown from './NotificationsDropdown';
 
-interface DashboardShellProps {
+interface BrandShellProps {
   children: React.ReactNode;
-  username: string;
-  displayName: string;
-  /** Header title shown in the sticky top bar */
+  companyName: string;
+  avatarUrl?: string;
   title: string;
-  /** Optional profile picture URL */
-  profilePictureUrl?: string;
-  /** Optional right-side content in the header */
-  headerRight?: React.ReactNode;
+  savedCount?: number;
 }
 
 const NAV = [
-  { href: '/dashboard',           icon: 'dashboard',   label: 'Dashboard' },
-  { href: '/dashboard/messages',  icon: 'chat',         label: 'Messages' },
-  { href: '/dashboard/media-kit', icon: 'description', label: 'Media Kit' },
-  { href: '/analytics',           icon: 'insights',    label: 'Detailed Analysis' },
-  { href: '/upload',              icon: 'upload',       label: 'Upload Videos' },
-  { href: '/dashboard/settings',  icon: 'payments',    label: 'Rate Settings' },
+  { href: '/brand/dashboard',  icon: 'dashboard',        label: 'Dashboard' },
+  { href: '/brand/search',     icon: 'manage_search',    label: 'Find Creators' },
+  { href: '/brand/wishlist',   icon: 'favorite',         label: 'Saved Creators' },
+  { href: '/brand/messages',     icon: 'chat',           label: 'Messages' },
 ];
 
-export default function DashboardShell({
-  children,
-  username,
-  displayName,
-  title,
-  profilePictureUrl,
-  headerRight,
-}: DashboardShellProps) {
+export default function BrandShell({ children, companyName, avatarUrl, title, savedCount }: BrandShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const handleLogout = () => { clearToken(); router.replace('/'); };
-  const initials = (displayName || username || 'U')[0].toUpperCase();
+  const initials = (companyName || 'B')[0].toUpperCase();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light font-display">
@@ -54,7 +41,8 @@ export default function DashboardShell({
         {/* Nav links */}
         <nav className="flex-1 px-4 space-y-1 mt-2">
           {NAV.map(({ href, icon, label }) => {
-            const active = pathname === href;
+            const active = pathname === href || (href === '/brand/search' && pathname === '/influencer-search');
+            const isSaved = href === '/brand/wishlist';
             return (
               <Link
                 key={href}
@@ -63,24 +51,29 @@ export default function DashboardShell({
               >
                 <span className="material-symbols-outlined">{icon}</span>
                 {label}
+                {isSaved && savedCount != null && savedCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
+                    {savedCount}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* User profile at bottom */}
+        {/* Brand profile at bottom */}
         <div className="p-4 border-t border-slate-200">
           <div className="flex items-center gap-3 p-2">
-            {profilePictureUrl ? (
-              <img src={profilePictureUrl} alt={displayName} className="size-8 rounded-full object-cover flex-shrink-0" />
-            ) : (
-              <div className="size-8 rounded-full bg-gradient-to-br from-primary/70 to-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                {initials}
-              </div>
-            )}
+            <div className={`size-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden ${avatarUrl ? 'bg-white border border-slate-200' : 'bg-gradient-to-br from-primary/70 to-primary text-white'}`}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={companyName} className="h-full w-full object-contain p-0.5" />
+              ) : (
+                initials
+              )}
+            </div>
             <div className="flex flex-col min-w-0">
-              <p className="text-sm font-bold truncate">{displayName || username}</p>
-              <p className="text-xs text-slate-500 truncate">@{username}</p>
+              <p className="text-sm font-bold truncate">{companyName}</p>
+              <p className="text-xs text-slate-500">Brand Account</p>
             </div>
             <button
               onClick={handleLogout}
@@ -100,16 +93,13 @@ export default function DashboardShell({
           <h1 className="text-lg font-bold text-slate-900">{title}</h1>
           <div className="flex items-center gap-4">
             <NotificationsDropdown />
-            {headerRight}
-            {profilePictureUrl ? (
-              <Link href="/dashboard/profile" title="My Account">
-                <img src={profilePictureUrl} alt={displayName} className="size-8 rounded-full object-cover ring-2 ring-transparent hover:ring-primary/40 transition-all cursor-pointer" />
-              </Link>
-            ) : (
-              <Link href="/dashboard/profile" title="My Account" className="size-8 rounded-full bg-gradient-to-br from-primary/70 to-primary flex items-center justify-center text-white text-xs font-bold ring-2 ring-transparent hover:ring-primary/40 transition-all">
-                {initials}
-              </Link>
-            )}
+            <div className={`size-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ${avatarUrl ? 'bg-white border border-slate-200' : 'bg-gradient-to-br from-primary/70 to-primary text-white'}`}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={companyName} className="h-full w-full object-contain p-0.5" />
+              ) : (
+                initials
+              )}
+            </div>
           </div>
         </header>
 

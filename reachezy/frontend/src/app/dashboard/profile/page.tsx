@@ -82,6 +82,7 @@ export default function ProfilePage() {
     }`;
 
   return (
+    <div className="overflow-y-auto h-full">
     <div className="p-8 max-w-2xl mx-auto space-y-6">
       {/* Avatar + identity */}
       <section className="bg-white rounded-2xl border border-slate-200 p-8">
@@ -208,6 +209,7 @@ export default function ProfilePage() {
           </button>
         </div>
       </section>
+    </div>
     </div>
   );
 }

@@ -131,9 +131,9 @@ export const api = {
   getRates: (creatorId: string) =>
     fetchLocal(`/creator/rates?creator_id=${creatorId}`),
 
-  // Media Kit — stays on deployed API (Lambda-generated)
+  // Media Kit — local route (avoids API Gateway network issues)
   getMediaKit: (username: string) =>
-    fetchAPI(`/creator/mediakit/${username}`),
+    fetchLocal(`/creator/mediakit/${username}`),
   generatePDF: (data: { creator_id: string }) =>
     fetchAPI('/creator/mediakit/pdf', {
       method: 'POST',

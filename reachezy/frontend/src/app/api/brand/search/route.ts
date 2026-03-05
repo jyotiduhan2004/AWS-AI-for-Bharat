@@ -142,7 +142,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'query is required' }, { status: 400 });
     }
 
-    // Try AI-powered Lambda search first (if API URL is configured)
+    // Try AI-powered Lambda search first (disabled temporarily because the Lambda is returning 502 / hanging)
+    /*
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (apiUrl) {
       try {
@@ -173,6 +174,7 @@ export async function POST(req: NextRequest) {
         console.warn('Lambda search unreachable/timeout, falling back to local parser:', err);
       }
     }
+    */
 
     // Local text-based fallback (embedding search happens in Lambda above)
     const parsed = localParse(searchQuery);
@@ -249,7 +251,7 @@ function formatResults(rows: Record<string, unknown>[]) {
     city: row.city,
     followers_count: row.followers_count,
     media_count: row.media_count,
-    profile_picture_url: row.profile_picture_url,
+    profile_picture_url: row.profile_picture_url || `/assets/creators/${row.username}.jpg`,
     style_profile: row.style_profile || null,
     rates: row.reel_rate != null
       ? {

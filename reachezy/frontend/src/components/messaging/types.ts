@@ -1,6 +1,7 @@
 export interface Person {
   id: string;
   name: string;
+  username?: string;
   subtitle: string;
   avatar: string;
   location: string;
@@ -11,6 +12,7 @@ export interface Person {
   followers: string;
   joined: string;
   bio: string;
+  website?: string;
 }
 
 export interface Message {
