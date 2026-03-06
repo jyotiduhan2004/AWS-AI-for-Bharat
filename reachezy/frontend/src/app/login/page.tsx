@@ -144,11 +144,9 @@ function LoginPageInner() {
     <div className="relative flex min-h-screen w-full flex-col bg-background-light font-display">
       {/* Navigation */}
       <header className="flex items-center justify-between border-b border-primary/10 px-6 md:px-20 py-4 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-3 text-primary">
-          <div className="size-8">
-            <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-              <path clipRule="evenodd" d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z" fill="currentColor" fillRule="evenodd" />
-            </svg>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white">
+            <span className="material-symbols-outlined text-2xl" aria-hidden="true">auto_awesome</span>
           </div>
           <h2 className="text-slate-900 text-xl font-bold tracking-tight">ReachEzy</h2>
         </div>
@@ -342,7 +340,7 @@ function LoginPageInner() {
       </main>
 
       <footer className="p-10 text-center border-t border-slate-100">
-        <p className="text-sm text-slate-400">© 2024 ReachEzy. All rights reserved.</p>
+        <p className="text-sm text-slate-400">© 2026 ReachEzy. Built for AI for Bharat Hackathon.</p>
       </footer>
 
       {/* Demo Creator Modal */}

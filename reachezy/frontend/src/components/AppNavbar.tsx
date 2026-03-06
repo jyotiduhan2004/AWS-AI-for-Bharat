@@ -35,9 +35,9 @@ export default function AppNavbar({
   return (
     <nav className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
-            <span className="text-sm font-bold text-white">R</span>
+        <Link href="/" className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+            <span className="material-symbols-outlined text-lg" aria-hidden="true">auto_awesome</span>
           </div>
           <span className="text-lg font-bold text-gray-900">ReachEzy</span>
         </Link>

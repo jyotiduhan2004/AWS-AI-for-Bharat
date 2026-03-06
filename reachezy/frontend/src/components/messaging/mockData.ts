@@ -20,7 +20,7 @@ export const mockBrandConversations: Conversation[] = [
       email: 'priya@stylewithpriya.in',
       niche: 'Fashion & Lifestyle',
       followers: '245K',
-      joined: 'Jan 2024',
+      joined: 'Jan 2026',
       bio: 'Fashion enthusiast sharing everyday style tips and sustainable fashion finds. Collaborated with 30+ brands across India.',
     },
     messages: [

@@ -99,7 +99,7 @@ export default function BenchmarkDisplay({
   const sourceLabel =
     benchmarks.source === 'community'
       ? `Community Data (based on ${benchmarks.sample_size || 0} creators)`
-      : 'Industry Estimate (INCA 2024 + Wobb)';
+      : 'Industry Estimate (INCA 2026 + Wobb)';
 
   return (
     <div className="space-y-4">
@@ -209,7 +209,7 @@ export default function BenchmarkDisplay({
             <div className="absolute bottom-full left-1/2 z-10 mb-2 w-64 -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-3 text-xs text-gray-200 shadow-lg">
               <p>
                 Rate benchmarks are estimated using INCA India Influencer Report
-                2024 and Wobb pricing data, adjusted for niche, follower count,
+                2026 and Wobb pricing data, adjusted for niche, follower count,
                 and city tier. As more creators share their rates, estimates will
                 be replaced with real community data.
               </p>

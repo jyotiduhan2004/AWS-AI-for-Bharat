@@ -289,7 +289,7 @@ export default function LandingPage() {
               </div>
               <h2 className="text-lg font-extrabold text-slate-900">ReachEzy</h2>
             </div>
-            <p className="text-sm text-slate-500">© 2024 ReachEzy Technologies. Built for AI for Bharat Hackathon.</p>
+            <p className="text-sm text-slate-500">© 2026 ReachEzy Technologies. Built for AI for Bharat Hackathon.</p>
             <div className="flex gap-6">
               <button className="text-slate-400 hover:text-primary transition-colors p-1" aria-label="Website">
                 <span className="material-symbols-outlined text-xl" aria-hidden="true">public</span>
